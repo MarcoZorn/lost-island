@@ -27,6 +27,8 @@ DEFAULTS = {
     "layer": "top",
     # show the clock in the idle pill
     "idle_clock": True,
+    # collapsed face: "auto", "compact" (art+eq only), "clock", "battery"
+    "pill_face": "auto",
     # 24h clock
     "clock_24h": True,
     # small battery readout in the pill while charging or below 30%

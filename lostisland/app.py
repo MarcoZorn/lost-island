@@ -23,6 +23,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 from lostisland import APP_ID, __version__, config  # noqa: E402
 from lostisland.services.audio import AudioService  # noqa: E402
 from lostisland.services.bluetooth import BluetoothService  # noqa: E402
+from lostisland.services.cava import CavaService  # noqa: E402
 from lostisland.services.mpris import MprisService  # noqa: E402
 from lostisland.services.network import NetworkService  # noqa: E402
 from lostisland.services.notify import NotifyService  # noqa: E402
@@ -102,7 +103,7 @@ class LostIsland(Adw.Application):
 
         self.island = Island(self.cfg, self.media, self.power,
                              weather=self.weather, system=self.system,
-                             on_settings=self.open_settings)
+                             on_settings=self.open_settings, cava=self.cava)
         self._wire_services()
         self.win.set_child(self.island)
         self.win.present()
@@ -172,8 +173,12 @@ class LostIsland(Adw.Application):
         if self.island:
             self.island.on_media_changed()
             self.island.expanded.refresh_battery()
+            self.island.pill.show_battery(
+                self.power.percentage, self.power.charging)
 
     def rebuild(self):
+        if self.cava:
+            self.cava.stop()
         if self.win:
             self.win.destroy()
         self.win = self.island = None
@@ -185,6 +190,7 @@ class LostIsland(Adw.Application):
     def _build_services(self):
         mods = self.cfg.get("modules", {})
         self.media = MprisService() if mods.get("music", True) else _NullMedia()
+        self.cava = CavaService() if mods.get("music", True) else None
         self.power = PowerService()
         self.audio = AudioService() if mods.get("volume_osd", True) else None
         self.notifier = NotifyService() if mods.get("notifications", True) else None

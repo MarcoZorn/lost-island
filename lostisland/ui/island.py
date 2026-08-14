@@ -18,7 +18,7 @@ COLLAPSE_DELAY_MS = 700
 
 class Island(Gtk.Box):
     def __init__(self, cfg: dict, media, power, weather=None, system=None,
-                 on_settings=None):
+                 on_settings=None, cava=None):
         super().__init__()
         self.add_css_class("island")
         self.set_halign(Gtk.Align.CENTER)
@@ -37,7 +37,7 @@ class Island(Gtk.Box):
         self.stack.set_hhomogeneous(False)
         self.stack.set_vhomogeneous(False)
 
-        self.pill = Pill(cfg)
+        self.pill = Pill(cfg, cava=cava)
         self.peek = Peek()
         self.expanded = Expanded(cfg, media, power,
                                  on_timer_change=self.pill.show_timer_chip,
@@ -106,6 +106,9 @@ class Island(Gtk.Box):
         # here — GTK claims them first — so this only fires on the surface
         if self.state in ("pill", "peek"):
             self.expand()
+        else:
+            # a click on empty card space closes it again
+            self.collapse()
 
     def _on_enter(self, motion, x, y):
         if self._collapse_timeout:

@@ -196,9 +196,9 @@ def main():
     # idle pill
     snap(Pill(CFG), "pill", 26, 0.0)
 
-    # music pill
+    # music pill — title only, the artist stays in the card
     pill = Pill(CFG)
-    pill.show_music("Night Cartography — Halfway to Nowhere", ART, True)
+    pill.show_music("Halfway to Nowhere", ART, True)
     snap(pill, "music-pill", 26, 0.3)
 
     # volume peek

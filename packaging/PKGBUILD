@@ -1,0 +1,36 @@
+# Maintainer: Marco Zorn <m@zorn.it>
+pkgname=lost-island
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="A Dynamic Island for your Linux desktop — fluid, native, light on your battery"
+arch=('any')
+url="https://github.com/MarcoZorn/lost-island"
+license=('MIT')
+depends=('python' 'python-gobject' 'python-cairo' 'gtk4' 'gtk4-layer-shell'
+         'libadwaita' 'libpulse')
+optdepends=('networkmanager: connectivity tile and peeks'
+            'upower: battery ring and charge peeks')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$pkgname-$pkgver"
+
+  install -d "$pkgdir/usr/lib/$pkgname"
+  cp -r lostisland "$pkgdir/usr/lib/$pkgname/"
+
+  install -d "$pkgdir/usr/bin"
+  cat > "$pkgdir/usr/bin/lost-island" <<'EOF'
+#!/bin/sh
+PYTHONPATH=/usr/lib/lost-island exec python3 -m lostisland "$@"
+EOF
+  chmod 755 "$pkgdir/usr/bin/lost-island"
+
+  install -Dm644 data/lost-island.desktop \
+    "$pkgdir/usr/share/applications/lost-island.desktop"
+  install -Dm644 data/lost-island.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/lost-island.svg"
+  install -Dm644 data/lost-island.service \
+    "$pkgdir/usr/lib/systemd/user/lost-island.service"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

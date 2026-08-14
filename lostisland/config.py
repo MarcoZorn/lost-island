@@ -18,7 +18,9 @@ CACHE_DIR = os.path.join(
 
 DEFAULTS = {
     # top margin in px between screen edge and the island
-    "margin_top": 6,
+    "margin_top": 0,
+    # sit on top of panels/bars instead of being pushed below them
+    "overlap_panel": True,
     # monitor connector name ("" = primary / compositor default)
     "monitor": "",
     # "top" stays below fullscreen apps, "overlay" is always on top
@@ -27,6 +29,8 @@ DEFAULTS = {
     "idle_clock": True,
     # 24h clock
     "clock_24h": True,
+    # small battery readout in the pill while charging or below 30%
+    "pill_battery": True,
     # seconds a peek (volume / battery / notification) stays visible
     "peek_seconds": 2.2,
     # modules that may take over the island
@@ -36,7 +40,13 @@ DEFAULTS = {
         "battery": True,
         "notifications": True,
         "network": True,
+        "bluetooth": True,
+        "weather": True,
+        "system": True,
+        "toggles": True,
     },
+    # weather location ("" = auto by IP); any wttr.in place name works
+    "weather_city": "",
     # accent color used for progress bars and highlights
     "accent": "#ff9f0a",
 }
@@ -67,3 +77,9 @@ def write_default() -> str:
         with open(CONFIG_PATH, "w") as f:
             json.dump(DEFAULTS, f, indent=2)
     return CONFIG_PATH
+
+
+def save(cfg: dict) -> None:
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(CONFIG_PATH, "w") as f:
+        json.dump(cfg, f, indent=2)

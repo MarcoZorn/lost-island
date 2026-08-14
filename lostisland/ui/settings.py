@@ -7,8 +7,21 @@ from gi.repository import Adw, Gdk, Gtk
 
 from lostisland import config
 
+FACES = [
+    ("auto", "Automatic", "Music with art + EQ when playing, clock otherwise"),
+    ("status", "Clock + battery", "Time and charge, always"),
+    ("lyrics", "Lyrics", "The current synced lyric line"),
+    ("title", "Song title", "Just the title — never the artist"),
+    ("compact", "Music icon", "Album art and EQ only"),
+    ("clock", "Clock only", ""),
+    ("battery", "Battery only", ""),
+    ("weather", "Weather", "Temperature and conditions"),
+    ("bluetooth", "Bluetooth", "Connected device and its battery"),
+]
+
 MODULES = [
     ("music", "Music", "MPRIS players: pill face, full controls, album art"),
+    ("lyrics", "Lyrics", "Synced lyrics from lrclib.net for the lyrics face"),
     ("volume_osd", "Volume OSD", "Peek on volume changes"),
     ("battery", "Battery", "Charge ring and plug/unplug peeks"),
     ("notifications", "Notifications", "Mirror notifications as peeks"),
@@ -101,20 +114,14 @@ class SettingsWindow(Adw.PreferencesWindow):
         page.add(pos)
 
         look = Adw.PreferencesGroup(title="Look")
-        faces = [("auto", "Automatic"), ("compact", "Music icon only"),
-                 ("clock", "Clock only"), ("battery", "Battery only")]
-        face = Adw.ComboRow(title="Pill face",
-                            subtitle="What the collapsed island shows")
-        face.set_model(Gtk.StringList.new([f[1] for f in faces]))
-        keys = [f[0] for f in faces]
-        try:
-            face.set_selected(keys.index(self.cfg.get("pill_face", "auto")))
-        except ValueError:
-            face.set_selected(0)
-        face.connect("notify::selected", lambda r, _p: (
-            self.cfg.__setitem__("pill_face", keys[r.get_selected()]),
+        opacity = Adw.SpinRow.new_with_range(30, 100, 5)
+        opacity.set_title("Opacity")
+        opacity.set_subtitle("Island background transparency, %")
+        opacity.set_value(round(float(self.cfg.get("opacity", 0.97)) * 100))
+        opacity.connect("notify::value", lambda r, _p: (
+            self.cfg.__setitem__("opacity", round(r.get_value() / 100, 2)),
             self._apply()))
-        look.add(face)
+        look.add(opacity)
         color = Adw.ActionRow(title="Accent color")
         btn = Gtk.ColorDialogButton()
         btn.set_dialog(Gtk.ColorDialog(with_alpha=False))
@@ -138,6 +145,18 @@ class SettingsWindow(Adw.PreferencesWindow):
         page.add(look)
 
         behavior = Adw.PreferencesGroup(title="Behavior")
+        click = Adw.ComboRow(
+            title="Left click on the pill",
+            subtitle="Right click always opens the card; swipe cycles faces")
+        actions = [("cycle", "Cycle faces"), ("expand", "Open the card")]
+        click.set_model(Gtk.StringList.new([a[1] for a in actions]))
+        click.set_selected(
+            1 if self.cfg.get("click_action", "cycle") == "expand" else 0)
+        click.connect("notify::selected", lambda r, _p: (
+            self.cfg.__setitem__("click_action",
+                                 actions[r.get_selected()][0]),
+            self._apply()))
+        behavior.add(click)
         peek = Adw.SpinRow.new_with_range(0.8, 6.0, 0.2)
         peek.set_digits(1)
         peek.set_title("Peek duration")
@@ -148,7 +167,33 @@ class SettingsWindow(Adw.PreferencesWindow):
             self._apply()))
         behavior.add(peek)
         page.add(behavior)
+
+        faces = Adw.PreferencesGroup(
+            title="Pill faces",
+            description="Faces in the click/swipe cycle. The order is fixed; "
+                        "a face with nothing to show falls back to the clock")
+        enabled = self.cfg.get("pill_faces", [])
+        for key, title, subtitle in FACES:
+            row = Adw.SwitchRow(title=title, subtitle=subtitle)
+            row.set_active(key in enabled)
+            row.connect("notify::active",
+                        lambda r, _p, k=key: self._toggle_face(k, r))
+            faces.add(row)
+        page.add(faces)
         return page
+
+    def _toggle_face(self, key: str, row):
+        current = [f for f in self.cfg.get("pill_faces", []) if f != key]
+        if row.get_active():
+            order = [f[0] for f in FACES]
+            current.append(key)
+            current.sort(key=order.index)
+        if not current:
+            current = ["auto"]
+        self.cfg["pill_faces"] = current
+        if self.cfg.get("pill_face") not in current:
+            self.cfg["pill_face"] = current[0]
+        self._apply()
 
     def _modules_page(self):
         page = Adw.PreferencesPage(title="Modules",

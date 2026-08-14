@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lost-island"
-version = "1.2.0"
+version = "1.3.0"
 description = "A Dynamic Island for your Linux desktop — fluid, native, and light on your battery"
 readme = "README.md"
 license = { text = "MIT" }

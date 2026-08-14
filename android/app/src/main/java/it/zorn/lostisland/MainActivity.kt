@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.Button
@@ -23,6 +24,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var overlayStatus: TextView
     private lateinit var listenerStatus: TextView
+    private lateinit var restrictedHelp: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,6 +72,42 @@ class MainActivity : AppCompatActivity() {
             top = dp(4)
         )
         root.add(listenerStatus, top = dp(8))
+
+        restrictedHelp = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+        }
+        restrictedHelp.add(
+            text(
+                "Toggle greyed out? Android 13+ locks this setting for sideloaded " +
+                    "apps (“restricted settings”). Unlock it once:",
+                13f, 0xB3FFFFFF.toInt()
+            ),
+            top = dp(10)
+        )
+        restrictedHelp.add(
+            text(
+                "1 · Open App info below\n" +
+                    "2 · Tap the ⋮ menu in the top-right corner\n" +
+                    "3 · Choose “Allow restricted settings” and confirm\n" +
+                    "4 · Come back and enable Lost Island in Notification access",
+                13f, 0x80FFFFFF.toInt()
+            ),
+            top = dp(6)
+        )
+        restrictedHelp.add(
+            button("Open app info") {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:$packageName")
+                    )
+                )
+            },
+            top = dp(10)
+        )
+        root.add(restrictedHelp)
+
         root.add(
             button("Open notification access") {
                 startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -87,6 +125,12 @@ class MainActivity : AppCompatActivity() {
                 startForegroundService(Intent(this, IslandService::class.java))
             },
             top = dp(40)
+        )
+        root.add(
+            button("Island settings") {
+                startActivity(Intent(this, SettingsActivity::class.java))
+            },
+            top = dp(12)
         )
 
         setContentView(ScrollView(this).apply {
@@ -109,6 +153,8 @@ class MainActivity : AppCompatActivity() {
         overlayStatus.setTextColor(if (overlay) GREEN else ORANGE)
         listenerStatus.text = if (listener) "Granted" else "Not granted"
         listenerStatus.setTextColor(if (listener) GREEN else ORANGE)
+        restrictedHelp.visibility =
+            if (!listener && Build.VERSION.SDK_INT >= 33) View.VISIBLE else View.GONE
     }
 
     private fun text(label: String, size: Float, color: Int, bold: Boolean = false) =
@@ -132,7 +178,7 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { onClick() }
         }
 
-    private fun LinearLayout.add(v: TextView, top: Int = 0) {
+    private fun LinearLayout.add(v: View, top: Int = 0) {
         addView(v, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = top })
     }
 

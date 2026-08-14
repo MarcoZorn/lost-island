@@ -11,8 +11,25 @@ android {
         applicationId = "it.zorn.lostisland"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.4.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            // public sideload key, deliberately checked in — not a secret
+            storeFile = rootProject.file("sideload.keystore")
+            storePassword = "lostisland"
+            keyAlias = "lostisland"
+            keyPassword = "lostisland"
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     compileOptions {

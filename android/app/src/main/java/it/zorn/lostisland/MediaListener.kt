@@ -7,6 +7,7 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.service.notification.NotificationListenerService
 
 class MediaListener : NotificationListenerService() {
@@ -69,10 +70,17 @@ class MediaListener : NotificationListenerService() {
     private fun publish() {
         val controller = active
         val metadata = controller?.metadata
+        val state = controller?.playbackState
         MediaState.controller = controller
         MediaState.title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)
         MediaState.artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)
-        MediaState.playing = controller?.playbackState?.state == PlaybackState.STATE_PLAYING
+        MediaState.album = metadata?.getString(MediaMetadata.METADATA_KEY_ALBUM)
+        MediaState.durationMs = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+        MediaState.playing = state?.state == PlaybackState.STATE_PLAYING
+        MediaState.basePosMs = state?.position ?: 0L
+        MediaState.baseTimeMs = state?.lastPositionUpdateTime?.takeIf { it > 0 }
+            ?: SystemClock.elapsedRealtime()
+        MediaState.speed = state?.playbackSpeed?.takeIf { it > 0f } ?: 1f
         main.post { MediaState.onChanged?.invoke() }
     }
 }

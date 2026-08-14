@@ -45,6 +45,7 @@
   #pill .art { width: 20px; height: 20px; border-radius: 5px; display: none; }
   #pill .t { font-weight: 600; font-size: 13px; max-width: 300px;
              overflow: hidden; text-overflow: ellipsis; display: none; }
+  #pbat { color: #ff9f0a; font-size: 11px; font-weight: 700; display: none; }
   .eq { display: none; align-items: center; gap: 2.5px; height: 14px; }
   .eq i { width: 3px; height: 4px; border-radius: 2px; background: #f2f2f4;
           transition: height .06s linear; }
@@ -126,10 +127,12 @@
   <div id="island">
     <section id="pill" class="on">
       <div class="art"></div>
-      <div class="t"></div>
+      <div class="t" id="ptitle"></div>
+      <div class="t" id="plyric"></div>
       <div class="eq"><i></i><i></i><i></i><i></i><i></i></div>
       <span class="dot">●</span>
       <span id="clock">--:--</span>
+      <span id="pbat">⚡ 84%</span>
     </section>
 
     <section id="peek">
@@ -182,7 +185,7 @@
     </section>
   </div>
 
-  <div class="hint">click the island — it's alive</div>
+  <div class="hint">click to flip faces · swipe to switch · right-click opens the card</div>
   <div class="triggers">
     <button data-peek="volume">volume peek</button>
     <button data-peek="notify">notification peek</button>
@@ -212,21 +215,55 @@ function fit(name) {
   state = name === 'card' ? 'expanded' : name;
 }
 
-/* pill face */
+/* pill face deck — click cycles, swipe switches, right-click opens the card */
 const pillArt = secs.pill.querySelector('.art'),
-      pillT = secs.pill.querySelector('.t'),
+      pillT = document.getElementById('ptitle'),
+      pillLyric = document.getElementById('plyric'),
       eq = secs.pill.querySelector('.eq'),
       dot = secs.pill.querySelector('.dot'),
-      clock = document.getElementById('clock');
+      clock = document.getElementById('clock'),
+      pbat = document.getElementById('pbat');
+const FACES = ['auto', 'status', 'lyrics', 'title', 'clock'];
+let faceIdx = 0;
+const LYRICS = [
+  [0, '♪'], [42, 'Taillights paint the dashboard gold'],
+  [48, 'Half a tank and nowhere to be'], [55, 'You said turn the radio up'],
+  [62, 'So I let the night drive me'], [70, 'Halfway to nowhere, right on time'],
+  [78, 'Every wrong turn felt like mine'], [86, '♪'],
+];
+function lyricAt(s) {
+  let line = '♪';
+  for (const [t, txt] of LYRICS) if (t <= s) line = txt;
+  return line;
+}
 function pillFace() {
-  const music = playing;
-  pillArt.style.display = music ? 'block' : 'none';
-  pillT.style.display = music ? 'block' : 'none';
-  eq.style.display = music ? 'flex' : 'none';
-  dot.style.display = music ? 'none' : 'inline';
-  clock.style.display = music ? 'none' : 'inline';
-  pillT.textContent = 'Night Cartography — Halfway to Nowhere';
+  const face = FACES[faceIdx], music = playing;
+  for (const el of [pillArt, pillT, pillLyric]) el.style.display = 'none';
+  eq.style.display = 'none';
+  for (const el of [dot, clock, pbat]) el.style.display = 'none';
+
+  if (face === 'auto' && music) {
+    pillArt.style.display = 'block'; eq.style.display = 'flex';
+    pillT.style.display = 'block';
+    pillT.textContent = 'Halfway to Nowhere';   // title only, never the artist
+  } else if (face === 'status') {
+    clock.style.display = 'inline'; pbat.style.display = 'inline';
+  } else if (face === 'lyrics' && music) {
+    pillLyric.style.display = 'block';
+    pillLyric.textContent = lyricAt(pos);
+  } else if (face === 'title' && music) {
+    pillT.style.display = 'block';
+    pillT.textContent = 'Halfway to Nowhere';
+  } else if (face === 'clock') {
+    clock.style.display = 'inline';
+  } else {
+    dot.style.display = 'inline'; clock.style.display = 'inline';
+  }
   if (state === 'pill') fit('pill');
+}
+function cycleFace(step) {
+  faceIdx = (faceIdx + step + FACES.length) % FACES.length;
+  pillFace();
 }
 function tickClock() {
   const d = new Date();
@@ -250,12 +287,26 @@ setInterval(() => {
   });
 }, 50);
 
-/* expand / collapse */
+/* click cycles faces · swipe switches · right-click opens the card */
+let swiped = false, downX = null;
+island.addEventListener('pointerdown', e => { downX = e.clientX; });
+island.addEventListener('pointerup', e => {
+  if (downX !== null && state === 'pill' && Math.abs(e.clientX - downX) > 40) {
+    cycleFace(e.clientX < downX ? +1 : -1);
+    swiped = true; setTimeout(() => swiped = false, 250);
+  }
+  downX = null;
+});
 island.addEventListener('click', e => {
-  if (state !== 'expanded') { fit('card'); return; }
+  if (swiped) return;
+  if (state === 'pill' || state === 'peek') { cycleFace(+1); return; }
   if (e.target.closest('button') || e.target.closest('#seekTr') ||
       e.target.closest('#timerTile')) return;
   fit('pill');   // click on empty card space closes it
+});
+island.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  fit(state === 'expanded' ? 'pill' : 'card');
 });
 let leaveT = 0;
 island.addEventListener('mouseleave', () => {
@@ -275,7 +326,13 @@ playBtn.addEventListener('click', () => {
   pillFace();
 });
 setInterval(() => {
-  if (playing) { pos = (pos + 1) % LEN; drawSeek(); }
+  if (playing) {
+    pos = (pos + 1) % LEN; drawSeek();
+    if (FACES[faceIdx] === 'lyrics' && state === 'pill') {
+      pillLyric.textContent = lyricAt(pos);
+      fit('pill');
+    }
+  }
 }, 1000);
 function drawSeek() {
   const f = pos / LEN * 100;

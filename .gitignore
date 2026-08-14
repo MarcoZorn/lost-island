@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+build/
+dist/
+*.egg-info/
+.venv/
+*.deb
+*.rpm
+*.pkg.tar.zst
+windows/bin/
+windows/obj/
+macos/.build/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties

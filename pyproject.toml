@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lost-island"
+version = "1.0.0"
+description = "A Dynamic Island for your Linux desktop — fluid, native, and light on your battery"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Marco Zorn", email = "m@zorn.it" }]
+requires-python = ">=3.11"
+dependencies = ["PyGObject>=3.46"]
+
+[project.urls]
+Homepage = "https://github.com/MarcoZorn/lost-island"
+
+[project.scripts]
+lost-island = "lostisland.app:main"
+
+[tool.setuptools.packages.find]
+include = ["lostisland*"]
+
+[tool.setuptools.package-data]
+"lostisland.ui" = ["*.css"]

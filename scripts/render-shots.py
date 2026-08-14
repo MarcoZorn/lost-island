@@ -25,13 +25,15 @@ from gi.repository import Gdk, GdkX11, GLib, Gtk  # noqa: E402
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from lostisland import config  # noqa: E402
+from lostisland.services.weather import WeatherService  # noqa: E402
 from lostisland.ui.expanded import Expanded  # noqa: E402
 from lostisland.ui.peek import Peek  # noqa: E402
 from lostisland.ui.pill import Pill  # noqa: E402
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else "docs"
 ART = "/tmp/lost-island-shot-art.png"
-CFG = {"idle_clock": True, "clock_24h": True, "accent": "#ff9f0a"}
+CFG = dict(config.DEFAULTS)
 
 TRACK = dict(title="Halfway to Nowhere", artist="Night Cartography",
              album="Isole Perdute", length_us=214_000_000)
@@ -156,20 +158,11 @@ def _rrect(cr, x, y, w, h, r):
     cr.close_path()
 
 
-def snap(widget, name, radius, hue, expanded=False):
-    win = Gtk.Window(decorated=False, resizable=False)
-    box = Gtk.Box()
-    box.add_css_class("island")
-    if expanded:
-        box.add_css_class("island--expanded")
-    box.append(widget)
-    win.set_child(box)
+def snap_window(win, name, radius, hue):
     win.present()
-
     loop = GLib.MainLoop()
     GLib.timeout_add(700, loop.quit)
     loop.run()
-
     xid = win.get_surface().get_xid()
     raw = os.path.join(OUT, f"shot-{name}.png")
     subprocess.run(["import", "-window", str(xid), raw], check=True)
@@ -179,10 +172,25 @@ def snap(widget, name, radius, hue, expanded=False):
     print("rendered", raw)
 
 
+def snap(widget, name, radius, hue, expanded=False):
+    win = Gtk.Window(decorated=False, resizable=False)
+    box = Gtk.Box()
+    box.add_css_class("island")
+    if expanded:
+        box.add_css_class("island--expanded")
+    box.append(widget)
+    win.set_child(box)
+    snap_window(win, name, radius, hue)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     paint_art()
     Gtk.init()
+    # match the desktop the app was designed on; Xvfb defaults to a bare theme
+    settings = Gtk.Settings.get_default()
+    if settings:
+        settings.set_property("gtk-icon-theme-name", "breeze")
     load_css()
 
     # idle pill
@@ -204,14 +212,31 @@ def main():
                             "sei un genio, funziona tutto", "")
     snap(peek2, "notification", 26, 0.9)
 
-    # expanded player
-    exp = Expanded(CFG, FakeMedia(), FakePower())
+    # expanded player, all modules on
+    weather = WeatherService()
+    weather.temp, weather.desc, weather.icon = (
+        "24°", "Sunny", "weather-clear-symbolic")
+    weather._stamp = 10 ** 12  # pretend fresh so no fetch happens
+    exp = Expanded(CFG, FakeMedia(), FakePower(), weather=weather)
     exp.set_size_request(400, -1)
     exp.refresh_media()
     exp.refresh_battery()
     exp.refresh_volume(62)
     exp.refresh_network("HomeNet", "802-11-wireless", True)
+    exp.refresh_bluetooth("MX Buds", True, 80)
+    exp.sys_label.set_visible(True)
+    exp._on_system(None, 6, 38, 5.9)
     snap(exp, "expanded", 34, 0.5, expanded=True)
+
+    # settings window
+    gi.require_version("Adw", "1")
+    from gi.repository import Adw
+    from lostisland.ui.settings import SettingsWindow
+    Adw.init()
+    Adw.StyleManager.get_default().set_color_scheme(
+        Adw.ColorScheme.FORCE_DARK)
+    win = SettingsWindow(dict(config.DEFAULTS), lambda *_: None)
+    snap_window(win, "settings", 14, 0.2)
 
 
 if __name__ == "__main__":

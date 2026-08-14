@@ -102,6 +102,16 @@ class BatteryRing(Gtk.DrawingArea):
         cr.stroke()
 
 
+def pick_icon(widget, *names: str) -> str:
+    """First icon name the current theme actually ships (breeze and adwaita
+    disagree on several battery/bluetooth names)."""
+    theme = Gtk.IconTheme.get_for_display(widget.get_display())
+    for name in names:
+        if theme.has_icon(name):
+            return name
+    return names[-1]
+
+
 def _rounded_rect(cr, x, y, w, h, r):
     r = min(r, w / 2, h / 2)
     cr.new_sub_path()

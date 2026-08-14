@@ -10,7 +10,7 @@ import time
 
 from gi.repository import GLib, Gtk, Pango
 
-from lostisland.ui.draw import EqBars
+from lostisland.ui.draw import EqBars, pick_icon
 
 
 class Pill(Gtk.Box):
@@ -41,8 +41,17 @@ class Pill(Gtk.Box):
         self.timer_chip.add_css_class("timer-chip")
         self.timer_chip.set_visible(False)
 
+        # small battery readout, shown while charging or when low
+        self.batt_icon = Gtk.Image()
+        self.batt_icon.set_pixel_size(13)
+        self.batt_icon.add_css_class("pill-batt")
+        self.batt_label = Gtk.Label()
+        self.batt_label.add_css_class("pill-batt")
+        self.batt_icon.set_visible(False)
+        self.batt_label.set_visible(False)
+
         for widget in (self.art, self.title, self.eq, self.dot, self.clock,
-                       self.timer_chip):
+                       self.timer_chip, self.batt_icon, self.batt_label):
             self.append(widget)
 
         self.connect("map", lambda *_: self._start_clock())
@@ -78,6 +87,24 @@ class Pill(Gtk.Box):
         self.timer_chip.set_visible(text is not None)
         if text is not None:
             self.timer_chip.set_label(text)
+
+    def show_battery(self, percent: float, charging: bool):
+        show = self.cfg.get("pill_battery", True) and (charging or percent <= 30)
+        self.batt_icon.set_visible(show)
+        self.batt_label.set_visible(show)
+        if show:
+            if charging:
+                icon = pick_icon(self, "battery-charging-symbolic",
+                                 "battery-full-charging-symbolic",
+                                 "battery-good-charging-symbolic",
+                                 "battery-symbolic")
+            else:
+                icon = pick_icon(self, "battery-low-symbolic",
+                                 "battery-caution-symbolic",
+                                 "battery-empty-symbolic",
+                                 "battery-symbolic")
+            self.batt_icon.set_from_icon_name(icon)
+            self.batt_label.set_label(f"{percent:.0f}%")
 
     # -- clock, ticking once per minute, aligned to :00 --------------------
 

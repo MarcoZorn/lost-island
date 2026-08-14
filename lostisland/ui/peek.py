@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from gi.repository import Gtk, Pango
 
+from lostisland.ui.draw import pick_icon
+
 
 class Peek(Gtk.Box):
     def __init__(self):
@@ -62,11 +64,14 @@ class Peek(Gtk.Box):
 
     def show_battery(self, percent: float, plugged: bool):
         if plugged:
-            self._set("battery-charging-symbolic", "Charging",
-                      f"{percent:.0f}%")
+            icon = pick_icon(self, "battery-charging-symbolic",
+                             "battery-full-charging-symbolic",
+                             "battery-symbolic")
+            self._set(icon, "Charging", f"{percent:.0f}%")
         else:
-            self._set("battery-discharging-symbolic", "On battery",
-                      f"{percent:.0f}%")
+            icon = pick_icon(self, "battery-discharging-symbolic",
+                             "battery-good-symbolic", "battery-symbolic")
+            self._set(icon, "On battery", f"{percent:.0f}%")
 
     def show_notification(self, app: str, summary: str, body: str, icon: str):
         theme = Gtk.IconTheme.get_for_display(self.get_display())
@@ -76,6 +81,15 @@ class Peek(Gtk.Box):
                 name = candidate
                 break
         self._set(name, summary or app, body)
+
+    def show_bluetooth(self, device: str, connected: bool):
+        icon = pick_icon(self, "bluetooth-symbolic",
+                         "network-bluetooth-symbolic",
+                         "bluetooth-active-symbolic")
+        if connected:
+            self._set(icon, device, "Connected")
+        else:
+            self._set(icon, device or "Bluetooth", "Disconnected")
 
     def show_network(self, name: str, kind: str, connected: bool):
         if not connected:

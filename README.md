@@ -150,7 +150,14 @@ Linux flagship.
 |---|---|---|---|
 | Windows 10/11 | WPF (.NET 8) | system media session (SMTC) | `LostIsland.exe` from [Releases](https://github.com/MarcoZorn/lost-island/releases) |
 | macOS 13+ | AppKit (Swift) | Spotify / Apple Music | `LostIsland-macos.zip` from [Releases](https://github.com/MarcoZorn/lost-island/releases) |
-| Android 8+ | Kotlin | any media session | `app-debug.apk` from [Releases](https://github.com/MarcoZorn/lost-island/releases) |
+| Android 8+ | Kotlin | any media session | `app-release.apk` from [Releases](https://github.com/MarcoZorn/lost-island/releases) |
+
+The Android app hugs the display cutout like the real thing, cycles pill
+faces on tap/swipe (lyrics included), and has its own settings screen.
+Sideload notes: the APK is self-signed, so Play Protect shows an "unknown
+developer" prompt — choose *Install anyway*. On Android 13+ the
+notification-access toggle is locked for sideloaded apps until you open
+*App info → ⋮ → Allow restricted settings*; the app walks you through it.
 
 Build notes for each live in [`windows/`](windows/), [`macos/`](macos/) and
 [`android/`](android/).

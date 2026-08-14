@@ -1,0 +1,119 @@
+<Window x:Class="LostIsland.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Lost Island"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight" WindowStartupLocation="Manual"
+        ShowActivated="False" UseLayoutRounding="True"
+        FontFamily="Segoe UI Variable Display, Segoe UI"
+        Loaded="OnLoaded" SizeChanged="OnWindowSizeChanged">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="Fg" Color="#F2F2F4"/>
+        <SolidColorBrush x:Key="FgDim" Color="#B3F2F2F4"/>
+        <SolidColorBrush x:Key="Accent" Color="#FF9F0A"/>
+
+        <Style x:Key="GlyphButton" TargetType="Button">
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource Fg}"/>
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="99">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#1AFFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#2EFFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MainGlyphButton" TargetType="Button" BasedOn="{StaticResource GlyphButton}">
+            <Setter Property="Width" Value="52"/>
+            <Setter Property="Height" Value="52"/>
+            <Setter Property="Background" Value="#1AFFFFFF"/>
+            <Setter Property="FontSize" Value="20"/>
+        </Style>
+    </Window.Resources>
+
+    <!-- Margin leaves room for the drop shadow; 6px on top is the island's gap. -->
+    <Border x:Name="Island" Margin="14,6,14,20"
+            Background="#F70C0C0E" BorderBrush="#17FFFFFF" BorderThickness="1"
+            CornerRadius="26" ClipToBounds="True"
+            MouseLeftButtonUp="OnIslandClick"
+            MouseEnter="OnIslandMouseEnter" MouseLeave="OnIslandMouseLeave">
+        <Border.Effect>
+            <DropShadowEffect Color="Black" BlurRadius="18" ShadowDepth="4"
+                              Direction="270" Opacity="0.45"/>
+        </Border.Effect>
+
+        <Grid x:Name="ContentHost">
+
+            <!-- collapsed pill -->
+            <StackPanel x:Name="PillRoot" Orientation="Horizontal"
+                        Margin="20,8" VerticalAlignment="Center" Cursor="Hand">
+                <TextBlock x:Name="PillClock" FontSize="14" FontWeight="Bold"
+                           Foreground="{StaticResource Fg}" VerticalAlignment="Center"/>
+                <Ellipse x:Name="PillDot" Width="7" Height="7" Fill="{StaticResource Accent}"
+                         VerticalAlignment="Center" Margin="0,0,8,0" Visibility="Collapsed"/>
+                <TextBlock x:Name="PillTrack" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{StaticResource Fg}" VerticalAlignment="Center"
+                           MaxWidth="320" TextTrimming="CharacterEllipsis"
+                           Visibility="Collapsed"/>
+            </StackPanel>
+
+            <!-- expanded card -->
+            <Grid x:Name="ExpandedRoot" Width="358" Margin="20" Visibility="Collapsed">
+
+                <StackPanel x:Name="MediaPanel">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="ArtFrame" Width="92" Height="92"
+                                CornerRadius="20" Background="#0FFFFFFF"/>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,0,0">
+                            <TextBlock x:Name="TrackTitle" FontSize="16" FontWeight="Bold"
+                                       Foreground="{StaticResource Fg}"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="TrackArtist" FontSize="13"
+                                       Foreground="{StaticResource FgDim}"
+                                       TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+                        <Button x:Name="BtnPrev" Style="{StaticResource GlyphButton}"
+                                Content="&#xE892;" Click="OnPrev" Margin="0,0,18,0"/>
+                        <Button x:Name="BtnPlay" Style="{StaticResource MainGlyphButton}"
+                                Content="&#xE768;" Click="OnPlayPause"/>
+                        <Button x:Name="BtnNext" Style="{StaticResource GlyphButton}"
+                                Content="&#xE893;" Click="OnNext" Margin="18,0,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel x:Name="ClockPanel" HorizontalAlignment="Center" Margin="0,14">
+                    <TextBlock x:Name="BigClock" FontSize="34" FontWeight="Bold"
+                               Foreground="{StaticResource Fg}" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="BigDate" FontSize="13"
+                               Foreground="{StaticResource FgDim}" HorizontalAlignment="Center"
+                               Margin="0,2,0,0"/>
+                </StackPanel>
+
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

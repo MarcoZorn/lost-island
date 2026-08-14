@@ -101,6 +101,20 @@ class SettingsWindow(Adw.PreferencesWindow):
         page.add(pos)
 
         look = Adw.PreferencesGroup(title="Look")
+        faces = [("auto", "Automatic"), ("compact", "Music icon only"),
+                 ("clock", "Clock only"), ("battery", "Battery only")]
+        face = Adw.ComboRow(title="Pill face",
+                            subtitle="What the collapsed island shows")
+        face.set_model(Gtk.StringList.new([f[1] for f in faces]))
+        keys = [f[0] for f in faces]
+        try:
+            face.set_selected(keys.index(self.cfg.get("pill_face", "auto")))
+        except ValueError:
+            face.set_selected(0)
+        face.connect("notify::selected", lambda r, _p: (
+            self.cfg.__setitem__("pill_face", keys[r.get_selected()]),
+            self._apply()))
+        look.add(face)
         color = Adw.ActionRow(title="Accent color")
         btn = Gtk.ColorDialogButton()
         btn.set_dialog(Gtk.ColorDialog(with_alpha=False))

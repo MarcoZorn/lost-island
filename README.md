@@ -20,12 +20,13 @@
   <img src="docs/shot-expanded.png" width="640" alt="Expanded island with media player">
 </p>
 
-A little black island lives at the top of your screen. Most of the time it's a
-quiet pill with the clock. Play some music and it picks up the track; change
-the volume and it becomes an OSD; plug in the charger, switch Wi-Fi, or get a
-notification and it peeks to tell you — then melts back into a pill. Click it
-and it blooms into a full card: album art, seek bar, media controls, battery
-ring, volume, network, and a pomodoro timer.
+A little black island lives at the top of your screen — on your bar, not
+under it. Most of the time it's a quiet pill with the clock. Play some music
+and it picks up the track; change the volume and it becomes an OSD; plug in
+the charger, connect your earbuds, switch Wi-Fi, or get a notification and it
+peeks to tell you — then melts back into a pill. Click it and it blooms into
+a full card: album art, seek bar, media controls, quick toggles, battery
+ring, volume, weather, a pomodoro timer, and live system stats.
 
 | | |
 |:---:|:---:|
@@ -45,10 +46,24 @@ ring, volume, network, and a pomodoro timer.
 - **Notifications** — mirrored passively from the session bus; your normal
   notification daemon keeps working untouched.
 - **Network** — connectivity chip and peeks on Wi-Fi/Ethernet changes.
+- **Bluetooth** — connected device chip with battery level, peeks on
+  connect/disconnect.
+- **Weather** — current conditions in the card, fetched only when you open
+  it (and at most every 30 minutes).
+- **Quick toggles** — mute, mic mute, caffeine (blocks sleep via
+  `systemd-inhibit`) and a screenshot shortcut.
+- **System stats** — CPU and RAM readout, sampled only while the card is
+  open.
 - **Pomodoro** — a 25-minute focus timer; while it runs, the countdown rides
   along in the pill.
 - **Fluid morphs** — one surface that interpolates between pill, peek and
   card, with hover growth, exactly like the one on the phone.
+- **Settings** — every option below lives in a native preferences window
+  (the gear in the card, or `lost-island --settings`) and applies instantly.
+
+<p align="center">
+  <img src="docs/shot-settings.png" width="420" alt="Settings window">
+</p>
 
 ## Light on your battery — by architecture
 
@@ -125,25 +140,30 @@ Build notes for each live in [`windows/`](windows/), [`macos/`](macos/) and
 
 ## Configuration
 
-`~/.config/lost-island/config.json` (created on first run):
+Everything is editable from the settings window; the JSON at
+`~/.config/lost-island/config.json` is the backing store:
 
 | Key | Default | Meaning |
 |---|---|---|
-| `margin_top` | `6` | px between screen edge and island |
+| `margin_top` | `0` | px between screen edge and island |
+| `overlap_panel` | `true` | sit on top of bars/panels instead of below them |
 | `monitor` | `""` | connector name (`DP-1`, `HDMI-A-1`); empty = primary |
 | `layer` | `"top"` | `"overlay"` to float above fullscreen apps too |
 | `idle_clock` | `true` | show the clock in the idle pill |
 | `clock_24h` | `true` | 24-hour clock |
+| `pill_battery` | `true` | battery in the pill while charging or below 30% |
 | `peek_seconds` | `2.2` | how long peeks stay up |
-| `modules` | all on | disable `music`, `volume_osd`, `battery`, `notifications`, `network` individually |
+| `modules` | all on | toggle `music`, `volume_osd`, `battery`, `notifications`, `network`, `bluetooth`, `weather`, `system`, `toggles` |
+| `weather_city` | `""` | wttr.in place name; empty = automatic |
 | `accent` | `"#ff9f0a"` | accent color |
 
 ## CLI
 
 ```
-lost-island            start (single instance)
-lost-island --toggle   expand / collapse a running island
-lost-island --quit     stop it
+lost-island             start (single instance)
+lost-island --toggle    expand / collapse a running island
+lost-island --settings  open the settings window
+lost-island --quit      stop it
 ```
 
 ## Hacking

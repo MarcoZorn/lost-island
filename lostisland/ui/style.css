@@ -6,7 +6,7 @@ window {
 }
 
 .island {
-  background: rgba(12, 12, 14, 0.97);
+  background: @island_bg;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 26px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45),
@@ -308,4 +308,10 @@ scale.vol slider {
   font-size: 11px;
   font-weight: 700;
   color: @accent;
+}
+
+.pill-lyric {
+  font-weight: 600;
+  font-size: 13px;
+  color: rgba(242, 242, 244, 0.92);
 }

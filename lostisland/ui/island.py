@@ -18,7 +18,7 @@ COLLAPSE_DELAY_MS = 700
 
 class Island(Gtk.Box):
     def __init__(self, cfg: dict, media, power, weather=None, system=None,
-                 on_settings=None, cava=None):
+                 on_settings=None, cava=None, lyrics=None):
         super().__init__()
         self.add_css_class("island")
         self.set_halign(Gtk.Align.CENTER)
@@ -37,7 +37,9 @@ class Island(Gtk.Box):
         self.stack.set_hhomogeneous(False)
         self.stack.set_vhomogeneous(False)
 
-        self.pill = Pill(cfg, cava=cava)
+        self.lyrics = lyrics
+        self.pill = Pill(cfg, media=media, cava=cava, weather=weather,
+                         lyrics=lyrics)
         self.peek = Peek()
         self.expanded = Expanded(cfg, media, power,
                                  on_timer_change=self.pill.show_timer_chip,
@@ -53,6 +55,17 @@ class Island(Gtk.Box):
         click = Gtk.GestureClick()
         click.connect("released", self._on_click)
         self.add_controller(click)
+
+        # right click always opens/closes the card
+        right = Gtk.GestureClick(button=3)
+        right.connect("released", lambda *_: self.toggle())
+        self.add_controller(right)
+
+        # horizontal swipe on the pill cycles faces, tide-style
+        drag = Gtk.GestureDrag()
+        drag.connect("drag-update", self._on_drag_update)
+        drag.connect("drag-end", self._on_drag_end)
+        self.add_controller(drag)
 
         motion = Gtk.EventControllerMotion()
         motion.connect("enter", self._on_enter)
@@ -105,10 +118,22 @@ class Island(Gtk.Box):
         # clicks on buttons/sliders inside the expanded card never reach
         # here — GTK claims them first — so this only fires on the surface
         if self.state in ("pill", "peek"):
-            self.expand()
+            if self.cfg.get("click_action", "cycle") == "cycle":
+                self.pill.cycle(+1)
+            else:
+                self.expand()
         else:
             # a click on empty card space closes it again
             self.collapse()
+
+    def _on_drag_update(self, gesture, dx, dy):
+        # once it's clearly a horizontal swipe, claim it away from the click
+        if self.state == "pill" and abs(dx) > 18 and abs(dx) > abs(dy):
+            gesture.set_state(Gtk.EventSequenceState.CLAIMED)
+
+    def _on_drag_end(self, gesture, dx, dy):
+        if self.state == "pill" and abs(dx) > 36 and abs(dx) > abs(dy):
+            self.pill.cycle(+1 if dx < 0 else -1)
 
     def _on_enter(self, motion, x, y):
         if self._collapse_timeout:
@@ -136,8 +161,10 @@ class Island(Gtk.Box):
         if p is None:
             self.pill.show_idle()
         else:
-            self.pill.show_music(
-                f"{p.title}" if not p.artist else f"{p.artist} — {p.title}",
-                p.art_path, p.status == "Playing")
+            # the pill shows the title only — the artist lives in the card
+            self.pill.show_music(p.title, p.art_path, p.status == "Playing")
+            if self.lyrics is not None:
+                self.lyrics.set_track(p.artist, p.title, p.album,
+                                      p.length_us // 1_000_000)
         if self.state == "expanded":
             self.expanded.refresh_media()

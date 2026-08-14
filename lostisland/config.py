@@ -27,8 +27,16 @@ DEFAULTS = {
     "layer": "top",
     # show the clock in the idle pill
     "idle_clock": True,
-    # collapsed face: "auto", "compact" (art+eq only), "clock", "battery"
+    # current collapsed face; cycled by click / swipe
     "pill_face": "auto",
+    # faces included in the cycle, in order; available: auto, status,
+    # lyrics, title, compact, clock, battery, weather, bluetooth
+    "pill_faces": ["auto", "status", "lyrics", "title", "clock"],
+    # what a left click on the pill does: "cycle" faces or "expand" the card
+    # (right click always expands)
+    "click_action": "cycle",
+    # island background opacity, 0.3 .. 1.0
+    "opacity": 0.97,
     # 24h clock
     "clock_24h": True,
     # small battery readout in the pill while charging or below 30%
@@ -46,6 +54,7 @@ DEFAULTS = {
         "weather": True,
         "system": True,
         "toggles": True,
+        "lyrics": True,
     },
     # weather location ("" = auto by IP); any wttr.in place name works
     "weather_city": "",

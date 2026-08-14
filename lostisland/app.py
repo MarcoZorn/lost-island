@@ -24,6 +24,7 @@ from lostisland import APP_ID, __version__, config  # noqa: E402
 from lostisland.services.audio import AudioService  # noqa: E402
 from lostisland.services.bluetooth import BluetoothService  # noqa: E402
 from lostisland.services.cava import CavaService  # noqa: E402
+from lostisland.services.lyrics import LyricsService  # noqa: E402
 from lostisland.services.mpris import MprisService  # noqa: E402
 from lostisland.services.network import NetworkService  # noqa: E402
 from lostisland.services.notify import NotifyService  # noqa: E402
@@ -103,7 +104,8 @@ class LostIsland(Adw.Application):
 
         self.island = Island(self.cfg, self.media, self.power,
                              weather=self.weather, system=self.system,
-                             on_settings=self.open_settings, cava=self.cava)
+                             on_settings=self.open_settings, cava=self.cava,
+                             lyrics=self.lyrics)
         self._wire_services()
         self.win.set_child(self.island)
         self.win.present()
@@ -142,8 +144,11 @@ class LostIsland(Adw.Application):
                 display, self._css_provider)
         provider = Gtk.CssProvider()
         accent = self.cfg.get("accent", "#ff9f0a")
+        opacity = min(1.0, max(0.3, float(self.cfg.get("opacity", 0.97))))
         with open(CSS_PATH) as f:
-            css = f"@define-color accent {accent};\n" + f.read()
+            css = (f"@define-color accent {accent};\n"
+                   f"@define-color island_bg rgba(12, 12, 14, {opacity});\n"
+                   + f.read())
         provider.load_from_string(css)
         Gtk.StyleContext.add_provider_for_display(
             display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -191,6 +196,9 @@ class LostIsland(Adw.Application):
         mods = self.cfg.get("modules", {})
         self.media = MprisService() if mods.get("music", True) else _NullMedia()
         self.cava = CavaService() if mods.get("music", True) else None
+        self.lyrics = (LyricsService()
+                       if mods.get("music", True) and mods.get("lyrics", True)
+                       else None)
         self.power = PowerService()
         self.audio = AudioService() if mods.get("volume_osd", True) else None
         self.notifier = NotifyService() if mods.get("notifications", True) else None
@@ -237,8 +245,12 @@ class LostIsland(Adw.Application):
                 "changed",
                 lambda _s, dev, up, batt: (
                     isl.show_peek(isl.peek.show_bluetooth, dev, up),
-                    isl.expanded.refresh_bluetooth(dev, up, batt)))
+                    isl.expanded.refresh_bluetooth(dev, up, batt),
+                    isl.pill.show_bluetooth(dev, up, batt)))
             isl.expanded.refresh_bluetooth(
+                self.bluetooth.device, self.bluetooth.connected,
+                self.bluetooth.battery)
+            isl.pill.show_bluetooth(
                 self.bluetooth.device, self.bluetooth.connected,
                 self.bluetooth.battery)
         else:

@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lost Island — live demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Inter", "SF Pro Display", system-ui, sans-serif;
+    background: linear-gradient(135deg, #16142a 0%, #221636 55%, #0d0d16 100%);
+    color: #f2f2f4;
+    display: flex; flex-direction: column; align-items: center;
+    overflow-x: hidden;
+  }
+  .stage { flex: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+  #island {
+    margin-top: 10px;
+    background: rgba(12, 12, 14, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 26px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.45), 0 1px 3px rgba(0,0,0,.5);
+    transition: width .26s cubic-bezier(.34,1.2,.64,1),
+                height .26s cubic-bezier(.34,1.2,.64,1),
+                border-radius .26s;
+    position: relative; overflow: hidden; cursor: pointer;
+    user-select: none; -webkit-user-select: none;
+  }
+  #island.expanded { border-radius: 34px; cursor: default; }
+  #island > section {
+    position: absolute; top: 0; left: 0;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+    white-space: nowrap;
+  }
+  #island > section.on { opacity: 1; pointer-events: auto; }
+
+  /* pill */
+  #pill { display: flex; align-items: center; gap: 10px; padding: 9px 20px; }
+  #island:not(.expanded):hover { transform: scale(1.04); }
+  #island { transform-origin: top center; }
+  .dot { color: #ff9f0a; font-size: 13px; }
+  #clock { font-weight: 600; font-size: 14px; letter-spacing: .4px; }
+  #pill .art { width: 20px; height: 20px; border-radius: 5px; display: none; }
+  #pill .t { font-weight: 600; font-size: 13px; max-width: 300px;
+             overflow: hidden; text-overflow: ellipsis; display: none; }
+  .eq { display: none; align-items: center; gap: 2.5px; height: 14px; }
+  .eq i { width: 3px; height: 4px; border-radius: 2px; background: #f2f2f4;
+          transition: height .06s linear; }
+
+  /* peek */
+  #peek { display: flex; align-items: center; gap: 12px; padding: 12px 22px; }
+  #peek .ico { font-size: 17px; color: #ff9f0a; width: 22px; text-align: center; }
+  #peek .pt { font-weight: 700; font-size: 13px; }
+  #peek .pb { font-size: 12px; color: rgba(242,242,244,.65); }
+  #peek .bar { width: 150px; height: 6px; border-radius: 99px;
+               background: rgba(255,255,255,.12); overflow: hidden; }
+  #peek .bar i { display: block; height: 100%; background: #fff;
+                 border-radius: 99px; }
+
+  /* card */
+  #card { padding: 20px; width: 400px; white-space: normal; }
+  .chips { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 12px; }
+  .chip { background: rgba(255,255,255,.06); border-radius: 99px;
+          padding: 4px 11px; font-size: 11px; font-weight: 600;
+          color: rgba(242,242,244,.7); }
+  .head { display: flex; gap: 14px; align-items: center; }
+  .head .art { width: 92px; height: 92px; border-radius: 20px; flex: none; }
+  .art { background:
+    radial-gradient(circle at 65% 30%, rgba(255,255,255,.25), transparent 40%),
+    linear-gradient(135deg, #1a1738 0%, #8c2959 55%, #fa8c26 100%); }
+  .meta .title { font-weight: 700; font-size: 16px; }
+  .meta .artist { font-size: 13px; color: rgba(242,242,244,.7); margin-top: 3px; }
+  .meta .album { font-size: 11px; color: rgba(242,242,244,.45); margin-top: 3px; }
+  .seek { display: flex; align-items: center; gap: 8px; margin: 14px 0 4px; }
+  .seek span { font-size: 10px; font-weight: 600; color: rgba(242,242,244,.55);
+               font-variant-numeric: tabular-nums; }
+  .seek .tr { flex: 1; height: 5px; border-radius: 99px;
+              background: rgba(255,255,255,.12); position: relative; cursor: pointer; }
+  .seek .tr i { position: absolute; left: 0; top: 0; height: 100%;
+                background: #ff9f0a; border-radius: 99px; }
+  .seek .tr b { position: absolute; top: 50%; width: 12px; height: 12px;
+                border-radius: 99px; background: #fff; transform: translate(-6px,-50%);
+                box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .controls { display: flex; justify-content: center; align-items: center;
+              gap: 18px; margin: 10px 0 4px; }
+  .controls button {
+    background: transparent; border: none; color: #f2f2f4; font-size: 17px;
+    width: 38px; height: 38px; border-radius: 99px; cursor: pointer;
+  }
+  .controls button:hover { background: rgba(255,255,255,.1); }
+  .controls .main { background: rgba(255,255,255,.1); width: 52px; height: 52px;
+                    font-size: 21px; }
+  .toggles { display: flex; justify-content: center; gap: 12px; margin: 12px 0; }
+  .toggles button { width: 44px; height: 44px; border-radius: 99px; border: none;
+    background: rgba(255,255,255,.07); color: #f2f2f4; font-size: 16px; cursor: pointer; }
+  .toggles button:hover { background: rgba(255,255,255,.13); }
+  .toggles button.onn { background: #ff9f0a; color: #0c0c0e; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .tile { background: rgba(255,255,255,.06); border-radius: 18px; padding: 12px 8px;
+          text-align: center; }
+  .tile .big { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .tile .sub { font-size: 10px; color: rgba(242,242,244,.55); margin-top: 4px; }
+  .tile svg { display: block; margin: 0 auto 2px; }
+  #timerTile { cursor: pointer; }
+  #timerTile.run .big { color: #ff9f0a; }
+  .sys { text-align: center; font-size: 11px; font-weight: 600;
+         color: rgba(242,242,244,.45); margin-top: 12px; }
+
+  .hint { margin-top: 26px; font-size: 13px; color: rgba(242,242,244,.55); }
+  .triggers { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;
+              justify-content: center; }
+  .triggers button {
+    background: rgba(255,255,255,.08); color: #f2f2f4; border: none;
+    border-radius: 99px; padding: 8px 16px; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .triggers button:hover { background: rgba(255,255,255,.15); }
+  .get { margin: 34px 0 26px; font-size: 13px; color: rgba(242,242,244,.6); }
+  .get a { color: #ff9f0a; text-decoration: none; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div id="island">
+    <section id="pill" class="on">
+      <div class="art"></div>
+      <div class="t"></div>
+      <div class="eq"><i></i><i></i><i></i><i></i><i></i></div>
+      <span class="dot">●</span>
+      <span id="clock">--:--</span>
+    </section>
+
+    <section id="peek">
+      <span class="ico"></span>
+      <div><div class="pt"></div><div class="pb"></div></div>
+      <div class="bar"><i></i></div>
+    </section>
+
+    <section id="card">
+      <div class="chips"><span class="chip">ᛒ MX Buds · 80%</span><span class="chip">HomeNet</span></div>
+      <div class="head">
+        <div class="art"></div>
+        <div class="meta">
+          <div class="title">Halfway to Nowhere</div>
+          <div class="artist">Night Cartography</div>
+          <div class="album">Isole Perdute</div>
+        </div>
+      </div>
+      <div class="seek">
+        <span id="tNow">0:47</span>
+        <div class="tr" id="seekTr"><i></i><b></b></div>
+        <span>3:34</span>
+      </div>
+      <div class="controls">
+        <button>⏮</button>
+        <button class="main" id="playBtn">⏸</button>
+        <button>⏭</button>
+      </div>
+      <div class="toggles">
+        <button id="muteBtn" title="Mute">🔊</button>
+        <button id="micBtn" title="Mic">🎙</button>
+        <button id="cafBtn" title="Caffeine">☕</button>
+        <button title="Screenshot">📷</button>
+      </div>
+      <div class="tiles">
+        <div class="tile">
+          <svg width="40" height="40" viewBox="0 0 40 40">
+            <circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="3.5"/>
+            <circle cx="20" cy="20" r="16" fill="none" stroke="#34d64a" stroke-width="3.5"
+              stroke-linecap="round" stroke-dasharray="84.4 100.5"
+              transform="rotate(-90 20 20)"/>
+          </svg>
+          <div class="sub">84%</div>
+        </div>
+        <div class="tile"><div class="big">🔊</div><div class="sub">Volume</div></div>
+        <div class="tile" id="timerTile"><div class="big" id="timerTxt">25:00</div><div class="sub">Focus</div></div>
+        <div class="tile"><div class="big">☀️ 24°</div><div class="sub">Sunny</div></div>
+      </div>
+      <div class="sys">CPU 6%&nbsp;&nbsp;·&nbsp;&nbsp;RAM 5.9 GiB (38%)</div>
+    </section>
+  </div>
+
+  <div class="hint">click the island — it's alive</div>
+  <div class="triggers">
+    <button data-peek="volume">volume peek</button>
+    <button data-peek="notify">notification peek</button>
+    <button data-peek="charge">charger peek</button>
+  </div>
+  <div class="get">
+    Web replica of the native GTK4 app —
+    <a href="https://github.com/MarcoZorn/lost-island">get the real one</a>
+    (Linux · Windows · macOS · Android)
+  </div>
+</div>
+
+<script>
+const island = document.getElementById('island');
+const secs = { pill: document.getElementById('pill'),
+               peek: document.getElementById('peek'),
+               card: document.getElementById('card') };
+let state = 'pill', playing = true, pos = 47, peekTimer = 0;
+
+function fit(name) {
+  const el = secs[name];
+  for (const k in secs) secs[k].classList.toggle('on', k === name);
+  island.classList.toggle('expanded', name === 'card');
+  const r = el.getBoundingClientRect();
+  island.style.width = el.scrollWidth + 'px';
+  island.style.height = el.scrollHeight + 'px';
+  state = name === 'card' ? 'expanded' : name;
+}
+
+/* pill face */
+const pillArt = secs.pill.querySelector('.art'),
+      pillT = secs.pill.querySelector('.t'),
+      eq = secs.pill.querySelector('.eq'),
+      dot = secs.pill.querySelector('.dot'),
+      clock = document.getElementById('clock');
+function pillFace() {
+  const music = playing;
+  pillArt.style.display = music ? 'block' : 'none';
+  pillT.style.display = music ? 'block' : 'none';
+  eq.style.display = music ? 'flex' : 'none';
+  dot.style.display = music ? 'none' : 'inline';
+  clock.style.display = music ? 'none' : 'inline';
+  pillT.textContent = 'Night Cartography — Halfway to Nowhere';
+  if (state === 'pill') fit('pill');
+}
+function tickClock() {
+  const d = new Date();
+  clock.textContent = String(d.getHours()).padStart(2,'0') + ':' +
+                      String(d.getMinutes()).padStart(2,'0');
+}
+tickClock(); setInterval(tickClock, 5000);
+
+/* beat-driven EQ — kick on the beat, bar 1 = bass … bar 5 = highs */
+const bars = eq.querySelectorAll('i'), BPM = 122;
+const resp = [1.0, 0.85, 0.55, 0.4, 0.3], shim = [0.05, 0.1, 0.25, 0.35, 0.45];
+setInterval(() => {
+  if (!playing || state !== 'pill') return;
+  const t = performance.now() / 1000, beat = t * BPM / 60;
+  const kick = Math.pow(Math.max(0, Math.cos(beat * 2 * Math.PI)), 14);
+  const off = Math.pow(Math.max(0, Math.cos((beat + .5) * 2 * Math.PI)), 14);
+  bars.forEach((b, i) => {
+    const s = shim[i] * (0.5 + 0.5 * Math.sin(t * (7 + i * 3.1) + i));
+    const v = 0.18 + resp[i] * kick * 0.82 + s + off * 0.25 * (1 - resp[i]);
+    b.style.height = Math.max(3, Math.min(14, v * 14)) + 'px';
+  });
+}, 50);
+
+/* expand / collapse */
+island.addEventListener('click', e => {
+  if (state !== 'expanded') { fit('card'); return; }
+  if (e.target.closest('button') || e.target.closest('#seekTr') ||
+      e.target.closest('#timerTile')) return;
+  fit('pill');   // click on empty card space closes it
+});
+let leaveT = 0;
+island.addEventListener('mouseleave', () => {
+  if (state !== 'expanded') return;
+  leaveT = setTimeout(() => fit('pill'), 900);
+});
+island.addEventListener('mouseenter', () => clearTimeout(leaveT));
+
+/* player */
+const playBtn = document.getElementById('playBtn'),
+      seekFill = document.querySelector('#seekTr i'),
+      seekKnob = document.querySelector('#seekTr b'),
+      tNow = document.getElementById('tNow'), LEN = 214;
+playBtn.addEventListener('click', () => {
+  playing = !playing;
+  playBtn.textContent = playing ? '⏸' : '▶';
+  pillFace();
+});
+setInterval(() => {
+  if (playing) { pos = (pos + 1) % LEN; drawSeek(); }
+}, 1000);
+function drawSeek() {
+  const f = pos / LEN * 100;
+  seekFill.style.width = f + '%'; seekKnob.style.left = f + '%';
+  tNow.textContent = Math.floor(pos/60) + ':' + String(pos%60).padStart(2,'0');
+}
+document.getElementById('seekTr').addEventListener('click', e => {
+  const r = e.currentTarget.getBoundingClientRect();
+  pos = Math.round((e.clientX - r.left) / r.width * LEN); drawSeek();
+});
+drawSeek();
+
+/* toggles */
+for (const id of ['muteBtn','micBtn','cafBtn'])
+  document.getElementById(id).addEventListener('click',
+    e => e.currentTarget.classList.toggle('onn'));
+
+/* focus timer */
+const timerTile = document.getElementById('timerTile'),
+      timerTxt = document.getElementById('timerTxt');
+let tLeft = 25*60, tRun = false;
+timerTile.addEventListener('click', () => {
+  tRun = !tRun; timerTile.classList.toggle('run', tRun);
+});
+setInterval(() => {
+  if (!tRun) return;
+  tLeft = Math.max(0, tLeft - 1);
+  timerTxt.textContent = String(Math.floor(tLeft/60)).padStart(2,'0') + ':' +
+                         String(tLeft%60).padStart(2,'0');
+  if (!tLeft) { tRun = false; timerTile.classList.remove('run'); tLeft = 25*60; }
+}, 1000);
+
+/* peeks */
+const peeks = {
+  volume: { ico: '🔊', t: '62%', b: '', bar: 62 },
+  notify: { ico: '📅', t: 'Standup in 10 minutes', b: 'Team sync · Room 2' },
+  charge: { ico: '⚡', t: 'Charging', b: '84%' },
+};
+document.querySelectorAll('[data-peek]').forEach(btn =>
+  btn.addEventListener('click', () => showPeek(peeks[btn.dataset.peek])));
+function showPeek(p) {
+  if (state === 'expanded') return;
+  secs.peek.querySelector('.ico').textContent = p.ico;
+  secs.peek.querySelector('.pt').textContent = p.t;
+  secs.peek.querySelector('.pb').textContent = p.b || '';
+  secs.peek.querySelector('.pb').style.display = p.b ? 'block' : 'none';
+  const bar = secs.peek.querySelector('.bar');
+  bar.style.display = p.bar != null ? 'block' : 'none';
+  if (p.bar != null) bar.querySelector('i').style.width = p.bar + '%';
+  fit('peek');
+  clearTimeout(peekTimer);
+  peekTimer = setTimeout(() => { if (state === 'peek') fit('pill'); }, 2200);
+}
+
+pillFace();
+fit('pill');
+addEventListener('resize', () => fit(state === 'expanded' ? 'card' : state));
+</script>
+</body>
+</html>

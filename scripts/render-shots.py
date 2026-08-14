@@ -208,8 +208,8 @@ def main():
 
     # notification peek
     peek2 = Peek()
-    peek2.show_notification("Messages", "Giulia",
-                            "sei un genio, funziona tutto", "")
+    peek2.show_notification("Calendar", "Standup in 10 minutes",
+                            "Team sync · Room 2", "view-calendar")
     snap(peek2, "notification", 26, 0.9)
 
     # expanded player, all modules on

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 
-from gi.repository import Gio, GLib, Gtk, Pango
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango
 
 from lostisland.ui.draw import BatteryRing
 
@@ -190,7 +190,14 @@ class Expanded(Gtk.Box):
         self.artist.set_visible(bool(p.artist))
         self.album.set_visible(bool(p.album))
         if p.art_path:
-            self.art.set_filename(p.art_path)
+            try:
+                # load at display size so the picture's natural size is 92px
+                # and never inflates the card
+                pb = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                    p.art_path, 92, 92, False)
+                self.art.set_paintable(Gdk.Texture.new_for_pixbuf(pb))
+            except GLib.Error:
+                self.art.set_paintable(None)
         else:
             self.art.set_paintable(None)
         playing = p.status == "Playing"

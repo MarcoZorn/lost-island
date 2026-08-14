@@ -27,7 +27,7 @@ class Pill(Gtk.Box):
         self.title = Gtk.Label()
         self.title.add_css_class("pill-title")
         self.title.set_ellipsize(Pango.EllipsizeMode.END)
-        self.title.set_max_width_chars(24)
+        self.title.set_max_width_chars(32)
         self.eq = EqBars()
 
         # idle side

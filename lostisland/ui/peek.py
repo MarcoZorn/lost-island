@@ -69,9 +69,12 @@ class Peek(Gtk.Box):
                       f"{percent:.0f}%")
 
     def show_notification(self, app: str, summary: str, body: str, icon: str):
-        display = Gtk.IconTheme.get_for_display(self.get_display())
-        name = icon if icon and display.has_icon(icon) else \
-            "preferences-system-notifications-symbolic"
+        theme = Gtk.IconTheme.get_for_display(self.get_display())
+        name = "dialog-information-symbolic"
+        for candidate in (icon, app.lower().replace(" ", "-")):
+            if candidate and theme.has_icon(candidate):
+                name = candidate
+                break
         self._set(name, summary or app, body)
 
     def show_network(self, name: str, kind: str, connected: bool):

@@ -1,0 +1,254 @@
+/* Lost Island — visual identity.
+   One surface, three moods: pill, peek, expanded. */
+
+window {
+  background: transparent;
+}
+
+.island {
+  background: rgba(12, 12, 14, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 26px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45),
+              0 1px 3px rgba(0, 0, 0, 0.5);
+  transition: border-radius 260ms cubic-bezier(0.34, 1.3, 0.64, 1);
+  color: #f2f2f4;
+}
+
+.island--expanded {
+  border-radius: 34px;
+}
+
+/* ---- collapsed pill ---- */
+
+.pill {
+  padding: 7px 20px;
+  transition: padding 160ms ease-out;
+}
+
+.pill:hover {
+  padding: 9px 24px;
+}
+
+.pill-clock {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.4px;
+}
+
+.pill-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: rgba(242, 242, 244, 0.92);
+}
+
+.pill-dot {
+  color: @accent;
+  font-size: 13px;
+}
+
+.timer-chip {
+  font-weight: 700;
+  font-size: 12px;
+  color: @accent;
+}
+
+/* ---- peek capsule ---- */
+
+.peek {
+  padding: 10px 22px;
+}
+
+.peek-title {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.peek-body {
+  font-size: 12px;
+  color: rgba(242, 242, 244, 0.65);
+}
+
+.peek-icon {
+  color: @accent;
+}
+
+.peek levelbar trough {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 99px;
+  min-height: 6px;
+  min-width: 150px;
+}
+
+.peek levelbar block.filled {
+  background: #ffffff;
+  border: none;
+  border-radius: 99px;
+  min-height: 6px;
+}
+
+/* ---- expanded card ---- */
+
+.expanded {
+  padding: 20px;
+}
+
+.art-frame {
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.art-frame picture {
+  border-radius: 20px;
+}
+
+.track-title {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.track-artist {
+  font-size: 13px;
+  color: rgba(242, 242, 244, 0.70);
+}
+
+.track-album {
+  font-size: 11px;
+  color: rgba(242, 242, 244, 0.45);
+}
+
+.seek-time {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(242, 242, 244, 0.55);
+  font-feature-settings: "tnum";
+}
+
+scale.seek {
+  padding: 0;
+}
+
+scale.seek trough {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 99px;
+  min-height: 5px;
+}
+
+scale.seek highlight {
+  background: @accent;
+  border: none;
+  border-radius: 99px;
+}
+
+scale.seek slider {
+  background: #ffffff;
+  border: none;
+  border-radius: 99px;
+  min-width: 12px;
+  min-height: 12px;
+  margin: -4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.media-btn {
+  background: transparent;
+  border: none;
+  border-radius: 99px;
+  min-width: 38px;
+  min-height: 38px;
+  color: #f2f2f4;
+  -gtk-icon-size: 18px;
+}
+
+.media-btn:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.media-btn:active {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.media-btn--main {
+  background: rgba(255, 255, 255, 0.10);
+  min-width: 52px;
+  min-height: 52px;
+  -gtk-icon-size: 24px;
+}
+
+.media-btn--main:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* ---- tiles ---- */
+
+.tile {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  padding: 12px;
+  min-width: 76px;
+}
+
+.tile-big {
+  font-weight: 700;
+  font-size: 17px;
+  font-feature-settings: "tnum";
+}
+
+.tile-sub {
+  font-size: 10px;
+  color: rgba(242, 242, 244, 0.55);
+}
+
+.tile-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 99px;
+  min-height: 22px;
+  min-width: 22px;
+  padding: 0;
+  color: #f2f2f4;
+  -gtk-icon-size: 11px;
+}
+
+.tile-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.tile--timer-running .tile-big {
+  color: @accent;
+}
+
+scale.vol {
+  padding: 0;
+}
+
+scale.vol trough {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 99px;
+  min-height: 5px;
+  min-width: 60px;
+}
+
+scale.vol highlight {
+  background: #ffffff;
+  border: none;
+  border-radius: 99px;
+}
+
+scale.vol slider {
+  background: #ffffff;
+  border: none;
+  border-radius: 99px;
+  min-width: 10px;
+  min-height: 10px;
+  margin: -3px;
+}
+
+.net-chip {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(242, 242, 244, 0.60);
+}

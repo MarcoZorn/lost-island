@@ -49,9 +49,14 @@ ring, volume, weather, a pomodoro timer, and live system stats.
   With [cava](https://github.com/karlstav/cava) installed, the five EQ bars
   follow the actual audio spectrum, beat by beat — and the cava process only
   exists while music is playing and the bars are on screen.
-- **Pill faces** — the collapsed island can show music + clock
-  automatically, just the album art and EQ, only the clock, or only the
-  battery. Click to open the card, click again (or drift away) to close it.
+- **Pill faces** — the collapsed island is a deck of faces you flip
+  through with a click or a horizontal swipe: automatic (music/clock),
+  clock + battery, **live synced lyrics**, song title (never the artist),
+  album art + EQ, clock only, battery only, weather, bluetooth. Pick which
+  faces are in the cycle from Settings. Right-click opens the full card;
+  click empty card space (or drift away) to close it.
+- **Lyrics** — the lyrics face shows the current line, synced to playback,
+  fetched once per song from lrclib.net.
 - **Volume OSD** — the pill widens into a level bar the moment you touch
   your volume keys.
 - **Battery** — charge ring in the expanded card, peeks on plug/unplug.
@@ -162,11 +167,14 @@ Everything is editable from the settings window; the JSON at
 | `monitor` | `""` | connector name (`DP-1`, `HDMI-A-1`); empty = primary |
 | `layer` | `"top"` | `"overlay"` to float above fullscreen apps too |
 | `idle_clock` | `true` | show the clock in the idle pill |
-| `pill_face` | `"auto"` | collapsed face: `auto`, `compact`, `clock`, `battery` |
+| `pill_face` | `"auto"` | current face (cycled by click / swipe) |
+| `pill_faces` | 5 faces | which faces are in the cycle: `auto`, `status`, `lyrics`, `title`, `compact`, `clock`, `battery`, `weather`, `bluetooth` |
+| `click_action` | `"cycle"` | left click: `cycle` faces or `expand` the card |
+| `opacity` | `0.97` | island background opacity, 0.3 – 1.0 |
 | `clock_24h` | `true` | 24-hour clock |
 | `pill_battery` | `true` | battery in the pill while charging or below 30% |
 | `peek_seconds` | `2.2` | how long peeks stay up |
-| `modules` | all on | toggle `music`, `volume_osd`, `battery`, `notifications`, `network`, `bluetooth`, `weather`, `system`, `toggles` |
+| `modules` | all on | toggle `music`, `lyrics`, `volume_osd`, `battery`, `notifications`, `network`, `bluetooth`, `weather`, `system`, `toggles` |
 | `weather_city` | `""` | wttr.in place name; empty = automatic |
 | `accent` | `"#ff9f0a"` | accent color |
 

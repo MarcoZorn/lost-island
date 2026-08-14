@@ -1,5 +1,5 @@
 Name:           lost-island
-Version:        1.1.0
+Version:        1.2.0
 Release:        1%{?dist}
 Summary:        A Dynamic Island for your Linux desktop
 License:        MIT
@@ -7,7 +7,7 @@ URL:            https://github.com/MarcoZorn/lost-island
 Source0:        %{url}/archive/refs/tags/v%{version}.tar.gz
 BuildArch:      noarch
 Requires:       python3 >= 3.11, python3-gobject, python3-cairo, gtk4, gtk4-layer-shell, libadwaita, pulseaudio-utils
-Recommends:     NetworkManager, upower
+Recommends:     NetworkManager, upower, cava
 
 %description
 A fluid, always-on-top island at the top of your screen: music with full
@@ -39,6 +39,9 @@ install -Dm644 data/lost-island.service %{buildroot}/usr/lib/systemd/user/lost-i
 %license LICENSE
 
 %changelog
+* Thu Aug 14 2026 Marco Zorn <m@zorn.it> - 1.2.0-1
+- Audio-reactive EQ via cava, pill faces, click-to-close, browser demo
+
 * Thu Aug 14 2026 Marco Zorn <m@zorn.it> - 1.1.0-1
 - Settings window, panel overlap, quick toggles, bluetooth, weather, system stats
 

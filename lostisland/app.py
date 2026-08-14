@@ -2,8 +2,16 @@
 
 from __future__ import annotations
 
+import ctypes
 import os
 import sys
+
+# gtk4-layer-shell must be resolved before libwayland-client, which GTK pulls
+# in on display init — preload it globally or the surface won't anchor.
+try:
+    ctypes.CDLL("libgtk4-layer-shell.so.0", mode=ctypes.RTLD_GLOBAL)
+except OSError:
+    pass
 
 import gi
 

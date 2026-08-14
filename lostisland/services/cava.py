@@ -17,14 +17,19 @@ from lostisland import config
 
 BARS = 5
 
+# mono: cava refuses odd bar counts with stereo output.
+# sensitivity: warm start so bars react immediately; autosens trims it.
 CONF = f"""[general]
 bars = {BARS}
 framerate = 30
+sensitivity = 2000
 [output]
 method = raw
 raw_target = /dev/stdout
 data_format = ascii
 ascii_max_range = 100
+channels = mono
+mono_option = average
 [smoothing]
 noise_reduction = 60
 """
@@ -34,6 +39,8 @@ class CavaService(GObject.Object):
     __gsignals__ = {
         # list of {BARS} floats in 0..1
         "levels": (GObject.SignalFlags.RUN_FIRST, None, (object,)),
+        # cava died on its own — consumers should fall back to the animation
+        "stopped": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
     def __init__(self):
@@ -41,6 +48,7 @@ class CavaService(GObject.Object):
         self.available = bool(GLib.find_program_in_path("cava"))
         self._proc: Gio.Subprocess | None = None
         self._stream: Gio.DataInputStream | None = None
+        self._stopping = False
 
     def start(self):
         if not self.available or self._proc is not None:
@@ -55,14 +63,29 @@ class CavaService(GObject.Object):
         except GLib.Error:
             self.available = False
             return
+        self._stopping = False
+        self._proc.wait_async(None, self._on_exit)
         self._stream = Gio.DataInputStream.new(self._proc.get_stdout_pipe())
         self._read_next()
 
     def stop(self):
         if self._proc is not None:
+            self._stopping = True
             self._proc.force_exit()
             self._proc = None
             self._stream = None
+
+    def _on_exit(self, proc, res):
+        try:
+            proc.wait_finish(res)
+        except GLib.Error:
+            pass
+        if not self._stopping and proc is not None:
+            # died by itself (config error, no audio backend): don't retry
+            self.available = False
+            self._proc = None
+            self._stream = None
+            self.emit("stopped")
 
     def _read_next(self):
         if self._stream is None:

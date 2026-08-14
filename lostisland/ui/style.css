@@ -252,3 +252,60 @@ scale.vol slider {
   font-weight: 600;
   color: rgba(242, 242, 244, 0.60);
 }
+
+/* ---- header chips + quick toggles ---- */
+
+.chip {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 99px;
+  padding: 3px 10px;
+  color: rgba(242, 242, 244, 0.70);
+}
+
+.chip-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  border-radius: 99px;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  color: rgba(242, 242, 244, 0.70);
+  -gtk-icon-size: 13px;
+}
+
+.chip-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #f2f2f4;
+}
+
+.toggle-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: none;
+  border-radius: 99px;
+  min-width: 44px;
+  min-height: 44px;
+  color: #f2f2f4;
+  -gtk-icon-size: 17px;
+}
+
+.toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.toggle-btn:checked {
+  background: @accent;
+  color: #0c0c0e;
+}
+
+.sys-stats {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(242, 242, 244, 0.45);
+  font-feature-settings: "tnum";
+}
+
+.pill-batt {
+  font-size: 11px;
+  font-weight: 700;
+  color: @accent;
+}

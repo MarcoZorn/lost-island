@@ -1,7 +1,7 @@
-"""The expanded card — media player up top, quick tiles below.
+"""The expanded card — media player up top, quick toggles and tiles below.
 
-The 1 Hz seek-bar tick runs only while this card is mapped and something is
-playing; unmapping tears every timer down.
+Every timer here lives only while the card is mapped: the 1 Hz seek tick,
+the 3 s system sampler, the weather request. Unmapping tears it all down.
 """
 
 from __future__ import annotations
@@ -10,29 +10,57 @@ import time
 
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango
 
-from lostisland.ui.draw import BatteryRing
+from lostisland.ui.draw import BatteryRing, pick_icon
 
 POMODORO = 25 * 60
 
 
 class Expanded(Gtk.Box):
-    def __init__(self, cfg: dict, media, power, on_timer_change=None):
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+    def __init__(self, cfg: dict, media, power, on_timer_change=None,
+                 weather=None, system=None, on_settings=None):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=14)
         self.add_css_class("expanded")
         self.cfg = cfg
         self.media = media
         self.power = power
+        self.weather = weather
+        self.system = system
         self.on_timer_change = on_timer_change
+        self.on_settings = on_settings
 
         self._pos_timer = 0
         self._seek_dragging = False
         self._position_us = 0
+        self._caffeine: Gio.Subprocess | None = None
 
+        self._build_header()
         self._build_player()
+        if cfg.get("modules", {}).get("toggles", True):
+            self._build_toggles()
         self._build_tiles()
+        self._build_footer()
 
         self.connect("map", lambda *_: self._on_map())
         self.connect("unmap", lambda *_: self._on_unmap())
+
+    # -- header: gear + connectivity chips ---------------------------------
+
+    def _build_header(self):
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        gear = Gtk.Button()
+        gear.set_icon_name("emblem-system-symbolic")
+        gear.add_css_class("chip-btn")
+        gear.connect("clicked", lambda *_: self.on_settings and self.on_settings())
+        spacer = Gtk.Box(hexpand=True)
+
+        self.bt_chip = _chip("bluetooth-active-symbolic")
+        self.net_chip = _chip("network-wireless-symbolic")
+
+        row.append(gear)
+        row.append(spacer)
+        row.append(self.bt_chip)
+        row.append(self.net_chip)
+        self.append(row)
 
     # -- media player section ---------------------------------------------
 
@@ -105,6 +133,67 @@ class Expanded(Gtk.Box):
         self.idle_box.append(self.big_date)
         self.append(self.idle_box)
 
+    # -- quick toggles ------------------------------------------------------
+
+    def _build_toggles(self):
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        row.set_halign(Gtk.Align.CENTER)
+
+        self.tg_mute = _toggle("audio-volume-high-symbolic", "Mute")
+        self.tg_mute.connect("toggled", self._on_mute_toggle)
+        self.tg_mic = _toggle("microphone-sensitivity-high-symbolic", "Mic")
+        self.tg_mic.connect("toggled", self._on_mic_toggle)
+        self.tg_caffeine = _toggle(
+            pick_icon(self, "preferences-desktop-screensaver-symbolic",
+                      "caffeine-cup-full-symbolic", "video-display-symbolic"),
+            "Caffeine")
+        self.tg_caffeine.connect("toggled", self._on_caffeine_toggle)
+        shot = Gtk.Button()
+        shot.set_icon_name(pick_icon(
+            self, "applets-screenshooter-symbolic", "camera-photo-symbolic"))
+        shot.add_css_class("toggle-btn")
+        shot.set_tooltip_text("Screenshot")
+        shot.connect("clicked", self._on_screenshot)
+
+        for w in (self.tg_mute, self.tg_mic, self.tg_caffeine, shot):
+            row.append(w)
+        self.append(row)
+
+    def _on_mute_toggle(self, btn):
+        Gio.Subprocess.new(
+            ["pactl", "set-sink-mute", "@DEFAULT_SINK@",
+             "1" if btn.get_active() else "0"], Gio.SubprocessFlags.NONE)
+        btn.set_icon_name("audio-volume-muted-symbolic" if btn.get_active()
+                          else "audio-volume-high-symbolic")
+
+    def _on_mic_toggle(self, btn):
+        Gio.Subprocess.new(
+            ["pactl", "set-source-mute", "@DEFAULT_SOURCE@",
+             "1" if btn.get_active() else "0"], Gio.SubprocessFlags.NONE)
+        btn.set_icon_name(
+            "microphone-sensitivity-muted-symbolic" if btn.get_active()
+            else "microphone-sensitivity-high-symbolic")
+
+    def _on_caffeine_toggle(self, btn):
+        if btn.get_active() and self._caffeine is None:
+            try:
+                self._caffeine = Gio.Subprocess.new(
+                    ["systemd-inhibit", "--what=idle:sleep",
+                     "--who=lost-island", "--why=Caffeine",
+                     "sleep", "infinity"], Gio.SubprocessFlags.NONE)
+            except GLib.Error:
+                btn.set_active(False)
+        elif not btn.get_active() and self._caffeine is not None:
+            self._caffeine.force_exit()
+            self._caffeine = None
+
+    def _on_screenshot(self, *_):
+        for tool in (["spectacle", "-r"], ["flameshot", "gui"],
+                     ["gnome-screenshot", "-i"]):
+            if GLib.find_program_in_path(tool[0]):
+                Gio.Subprocess.new(tool, Gio.SubprocessFlags.NONE)
+                return
+
     # -- tiles -------------------------------------------------------------
 
     def _build_tiles(self):
@@ -153,25 +242,43 @@ class Expanded(Gtk.Box):
         self.timer_tile.append(self.timer_label)
         self.timer_tile.append(btns)
 
-        # network chip
-        net_tile = _tile()
-        self.net_icon = Gtk.Image.new_from_icon_name("network-wireless-symbolic")
-        self.net_icon.set_halign(Gtk.Align.CENTER)
-        self.net_label = Gtk.Label(label="—")
-        self.net_label.add_css_class("net-chip")
-        self.net_label.set_ellipsize(Pango.EllipsizeMode.END)
-        self.net_label.set_max_width_chars(10)
-        net_tile.append(self.net_icon)
-        net_tile.append(self.net_label)
+        # weather
+        self.weather_tile = _tile()
+        self.weather_icon = Gtk.Image.new_from_icon_name("weather-clear-symbolic")
+        self.weather_icon.set_pixel_size(22)
+        self.weather_icon.set_halign(Gtk.Align.CENTER)
+        self.weather_temp = Gtk.Label(label="—")
+        self.weather_temp.add_css_class("tile-big")
+        self.weather_desc = Gtk.Label(label="Weather")
+        self.weather_desc.add_css_class("tile-sub")
+        self.weather_desc.set_ellipsize(Pango.EllipsizeMode.END)
+        self.weather_desc.set_max_width_chars(11)
+        self.weather_tile.append(self.weather_icon)
+        self.weather_tile.append(self.weather_temp)
+        self.weather_tile.append(self.weather_desc)
 
-        for t in (self.battery_tile, vol_tile, self.timer_tile, net_tile):
+        for t in (self.battery_tile, vol_tile, self.timer_tile,
+                  self.weather_tile):
             row.append(t)
         self.append(row)
+
+        if self.weather is None:
+            self.weather_tile.set_visible(False)
+        elif self.weather is not None:
+            self.weather.connect("changed", self._on_weather)
 
         # timer state
         self.timer_left = POMODORO
         self.timer_running = False
         self._timer_src = 0
+
+    def _build_footer(self):
+        self.sys_label = Gtk.Label()
+        self.sys_label.add_css_class("sys-stats")
+        self.sys_label.set_visible(self.system is not None)
+        if self.system is not None:
+            self.system.connect("changed", self._on_system)
+        self.append(self.sys_label)
 
     # -- refresh from services --------------------------------------------
 
@@ -220,30 +327,64 @@ class Expanded(Gtk.Box):
         suffix = " ⚡" if self.power.charging else ""
         self.batt_label.set_label(f"{self.power.percentage:.0f}%{suffix}")
 
-    def refresh_volume(self, percent: int):
+    def refresh_volume(self, percent: int, muted: bool = False):
         self.vol.set_value(percent)
+        if hasattr(self, "tg_mute") and self.tg_mute.get_active() != muted:
+            self.tg_mute.handler_block_by_func(self._on_mute_toggle)
+            self.tg_mute.set_active(muted)
+            self.tg_mute.set_icon_name(
+                "audio-volume-muted-symbolic" if muted
+                else "audio-volume-high-symbolic")
+            self.tg_mute.handler_unblock_by_func(self._on_mute_toggle)
 
     def refresh_network(self, name: str, kind: str, connected: bool):
         if not connected:
-            self.net_icon.set_from_icon_name("network-offline-symbolic")
-            self.net_label.set_label("Offline")
+            _set_chip(self.net_chip, "network-offline-symbolic", "Offline")
         else:
             icon = ("network-wireless-symbolic" if "wireless" in kind
                     else "network-wired-symbolic")
-            self.net_icon.set_from_icon_name(icon)
-            self.net_label.set_label(name or "Connected")
+            _set_chip(self.net_chip, icon, name or "Connected")
 
-    # -- seek bar ----------------------------------------------------------
+    def refresh_bluetooth(self, device: str, connected: bool, battery: int):
+        self.bt_chip.set_visible(connected)
+        if connected:
+            text = device if battery < 0 else f"{device} · {battery}%"
+            _set_chip(self.bt_chip,
+                      pick_icon(self, "bluetooth-symbolic",
+                                "network-bluetooth-symbolic",
+                                "bluetooth-active-symbolic"), text)
+
+    def _on_weather(self, _svc, temp, desc, icon):
+        self.weather_temp.set_label(temp)
+        self.weather_desc.set_label(desc)
+        # prefer the full-color weather set; symbolic suns get too abstract
+        self.weather_icon.set_from_icon_name(pick_icon(
+            self, icon.replace("-symbolic", ""), icon,
+            "weather-few-clouds"))
+
+    def _on_system(self, _svc, cpu, ram, ram_gib):
+        self.sys_label.set_label(
+            f"CPU {cpu}%   ·   RAM {ram_gib:.1f} GiB ({ram}%)")
+
+    # -- lifecycle ----------------------------------------------------------
 
     def _on_map(self):
         self.refresh_media()
         self.refresh_battery()
         self._refresh_big_clock()
+        if self.weather is not None:
+            self.weather.request()
+        if self.system is not None:
+            self.system.start()
 
     def _on_unmap(self):
         if self._pos_timer:
             GLib.source_remove(self._pos_timer)
             self._pos_timer = 0
+        if self.system is not None:
+            self.system.stop()
+
+    # -- seek bar ----------------------------------------------------------
 
     def _sync_pos_timer(self):
         playing = self.media.active and self.media.active.status == "Playing"
@@ -348,6 +489,35 @@ def _media_btn(icon: str, main: bool = False) -> Gtk.Button:
     if main:
         btn.add_css_class("media-btn--main")
     return btn
+
+
+def _toggle(icon: str, tooltip: str) -> Gtk.ToggleButton:
+    btn = Gtk.ToggleButton()
+    btn.set_icon_name(icon)
+    btn.add_css_class("toggle-btn")
+    btn.set_tooltip_text(tooltip)
+    return btn
+
+
+def _chip(icon: str) -> Gtk.Box:
+    box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
+    box.add_css_class("chip")
+    img = Gtk.Image.new_from_icon_name(icon)
+    img.set_pixel_size(13)
+    lbl = Gtk.Label()
+    lbl.add_css_class("net-chip")
+    lbl.set_ellipsize(Pango.EllipsizeMode.END)
+    lbl.set_max_width_chars(14)
+    box.append(img)
+    box.append(lbl)
+    return box
+
+
+def _set_chip(chip: Gtk.Box, icon: str, text: str):
+    img = chip.get_first_child()
+    lbl = chip.get_last_child()
+    img.set_from_icon_name(icon)
+    lbl.set_label(text)
 
 
 def _tile() -> Gtk.Box:

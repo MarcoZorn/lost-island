@@ -1,5 +1,5 @@
 Name:           lost-island
-Version:        1.0.0
+Version:        1.1.0
 Release:        1%{?dist}
 Summary:        A Dynamic Island for your Linux desktop
 License:        MIT
@@ -39,5 +39,8 @@ install -Dm644 data/lost-island.service %{buildroot}/usr/lib/systemd/user/lost-i
 %license LICENSE
 
 %changelog
+* Thu Aug 14 2026 Marco Zorn <m@zorn.it> - 1.1.0-1
+- Settings window, panel overlap, quick toggles, bluetooth, weather, system stats
+
 * Thu Aug 14 2026 Marco Zorn <m@zorn.it> - 1.0.0-1
 - Initial release

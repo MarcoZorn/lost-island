@@ -1,0 +1,13 @@
+[Unit]
+Description=Lost Island — Dynamic Island for the Linux desktop
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/lost-island
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

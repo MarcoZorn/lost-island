@@ -13,11 +13,15 @@ from gi.repository import GLib, Gtk
 
 
 class EqBars(Gtk.DrawingArea):
-    """Three bouncing bars, the universal 'something is playing' glyph."""
+    """Five bouncing bars, the universal 'something is playing' glyph.
+
+    With cava feeding real spectrum levels through `feed()`, the bars follow
+    the actual music; without it they fall back to a gentle sine animation.
+    """
 
     BAR_W = 3.0
     GAP = 2.5
-    N = 3
+    N = 5
 
     def __init__(self, color=(1.0, 1.0, 1.0)):
         super().__init__()
@@ -25,6 +29,8 @@ class EqBars(Gtk.DrawingArea):
         self._phase = 0.0
         self._playing = False
         self._timer = 0
+        self._levels: list[float] | None = None
+        self._external = False
         width = int(self.N * self.BAR_W + (self.N - 1) * self.GAP)
         self.set_content_width(width)
         self.set_content_height(14)
@@ -37,8 +43,18 @@ class EqBars(Gtk.DrawingArea):
         self._sync_timer()
         self.queue_draw()
 
+    def set_external(self, external: bool):
+        """True while a live level source (cava) is driving the bars."""
+        self._external = external
+        self._levels = None
+        self._sync_timer()
+
+    def feed(self, levels: list[float]):
+        self._levels = levels
+        self.queue_draw()
+
     def _sync_timer(self):
-        want = self._playing and self.get_mapped()
+        want = self._playing and self.get_mapped() and not self._external
         if want and not self._timer:
             self._timer = GLib.timeout_add(80, self._tick)
         elif not want and self._timer:
@@ -53,7 +69,9 @@ class EqBars(Gtk.DrawingArea):
     def _draw(self, area, cr, w, h):
         cr.set_source_rgb(*self.color)
         for i in range(self.N):
-            if self._playing:
+            if self._playing and self._external and self._levels:
+                frac = 0.15 + 0.85 * self._levels[i]
+            elif self._playing:
                 frac = 0.35 + 0.65 * abs(math.sin(self._phase + i * 1.1))
             else:
                 frac = 0.25

@@ -17,7 +17,11 @@
 </p>
 
 <p align="center">
-  <img src="docs/shot-expanded.png" width="640" alt="Expanded island with media player">
+  <img src="docs/demo.gif" width="640" alt="Lost Island in motion">
+</p>
+
+<p align="center">
+  <b><a href="https://marcozorn.github.io/lost-island/">▶ Play with the interactive demo in your browser</a></b>
 </p>
 
 A little black island lives at the top of your screen — on your bar, not
@@ -34,12 +38,20 @@ ring, volume, weather, a pomodoro timer, and live system stats.
 | *idle — just the time* | *now playing, with live EQ* |
 | ![Volume peek](docs/shot-volume.png) | ![Notification peek](docs/shot-notification.png) |
 | *volume OSD peek* | *notification peek* |
+| ![Expanded card](docs/shot-expanded.png) | ![Settings](docs/shot-settings.png) |
+| *the full card* | *native settings* |
 
 ## Features
 
 - **Music** — every MPRIS player (Spotify, Firefox, mpv, Elisa, …): album
   art, title/artist/album, seek bar, prev/play/next. The island elects the
   *active* player, so a paused podcast never hides the song you started.
+  With [cava](https://github.com/karlstav/cava) installed, the five EQ bars
+  follow the actual audio spectrum, beat by beat — and the cava process only
+  exists while music is playing and the bars are on screen.
+- **Pill faces** — the collapsed island can show music + clock
+  automatically, just the album art and EQ, only the clock, or only the
+  battery. Click to open the card, click again (or drift away) to close it.
 - **Volume OSD** — the pill widens into a level bar the moment you touch
   your volume keys.
 - **Battery** — charge ring in the expanded card, peeks on plug/unplug.
@@ -150,6 +162,7 @@ Everything is editable from the settings window; the JSON at
 | `monitor` | `""` | connector name (`DP-1`, `HDMI-A-1`); empty = primary |
 | `layer` | `"top"` | `"overlay"` to float above fullscreen apps too |
 | `idle_clock` | `true` | show the clock in the idle pill |
+| `pill_face` | `"auto"` | collapsed face: `auto`, `compact`, `clock`, `battery` |
 | `clock_24h` | `true` | 24-hour clock |
 | `pill_battery` | `true` | battery in the pill while charging or below 30% |
 | `peek_seconds` | `2.2` | how long peeks stay up |
@@ -176,7 +189,9 @@ python -m unittest discover tests    # tests
 ```
 
 The README screenshots are generated, not hand-cropped — real widgets, real
-CSS, rendered headless: `scripts/render-shots.py`.
+CSS, rendered headless: `scripts/render-shots.py`. The demo GIF is recorded
+the same way (`scripts/record-demo.py`), and the browser demo lives in
+`docs/index.html`.
 
 ## License
 

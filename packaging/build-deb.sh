@@ -33,8 +33,8 @@ Version: $VER
 Section: utils
 Priority: optional
 Architecture: all
-Depends: python3 (>= 3.11), python3-gi, python3-gi-cairo, gir1.2-gtk-4.0, gir1.2-adw-1, libgtk4-layer-shell0, pulseaudio-utils
-Recommends: network-manager, upower
+Depends: python3 (>= 3.11), python3-gi, python3-gi-cairo, gir1.2-gtk-4.0, gir1.2-adw-1, pulseaudio-utils
+Recommends: libgtk4-layer-shell0, network-manager, upower
 Maintainer: Marco Zorn <m@zorn.it>
 Homepage: https://github.com/MarcoZorn/lost-island
 Description: Dynamic Island for the Linux desktop

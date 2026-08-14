@@ -1,0 +1,133 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GTK stack
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-gi python3-gi-cairo gir1.2-gtk-4.0 \
+            gir1.2-adw-1 libgtk4-layer-shell0 xvfb dbus
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Smoke test
+        run: dbus-run-session -- xvfb-run -a python3 -m lostisland --version
+      - name: Build deb
+        run: ./packaging/build-deb.sh
+      - name: Lint deb
+        run: dpkg-deb --info dist/*.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lost-island-deb
+          path: dist/*.deb
+
+  rpm:
+    runs-on: ubuntu-latest
+    container: fedora:40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install rpm tooling
+        run: dnf install -y rpm-build rpmdevtools
+      - name: Build rpm
+        run: |
+          VER=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+          rpmdev-setuptree
+          tar czf ~/rpmbuild/SOURCES/v$VER.tar.gz \
+            --transform "s,^,lost-island-$VER/," \
+            lostisland data packaging LICENSE pyproject.toml
+          rpmbuild -bb packaging/lost-island.spec
+          mkdir -p dist && cp ~/rpmbuild/RPMS/noarch/*.rpm dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lost-island-rpm
+          path: dist/*.rpm
+
+  arch:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GTK stack
+        run: pacman -Syu --noconfirm python python-gobject python-cairo gtk4 \
+          gtk4-layer-shell libadwaita xorg-server-xvfb dbus
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Smoke test
+        run: dbus-run-session -- xvfb-run -a python -m lostisland --version
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Publish
+        run: dotnet publish windows/LostIsland.csproj -c Release -r win-x64
+          --self-contained false -p:PublishSingleFile=true
+          -o dist/windows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LostIsland-windows-x64
+          path: dist/windows/LostIsland.exe
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: cd macos && swift build -c release
+      - name: Bundle app
+        run: cd macos && ./make-app.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LostIsland-macos
+          path: macos/LostIsland-macos.zip
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Assemble
+        run: cd android && gradle assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LostIsland-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, rpm, windows, macos, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Lost Island ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            artifacts/lost-island-deb/*.deb \
+            artifacts/lost-island-rpm/*.rpm \
+            artifacts/LostIsland-windows-x64/LostIsland.exe \
+            artifacts/LostIsland-macos/LostIsland-macos.zip \
+            artifacts/LostIsland-android-debug/app-debug.apk

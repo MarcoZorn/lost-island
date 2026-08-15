@@ -5,7 +5,8 @@
 <h1 align="center">Lost Island</h1>
 
 <p align="center">
-  <b>A Dynamic Island for your desktop.</b><br>
+  <b>A Dynamic Island for your desktop — Linux, Windows, macOS and Android.</b><br>
+  The iPhone's Dynamic Island, rebuilt natively for every screen you own.<br>
   Fluid, native, and light on your battery.
 </p>
 
@@ -207,6 +208,33 @@ The README screenshots are generated, not hand-cropped — real widgets, real
 CSS, rendered headless: `scripts/render-shots.py`. The demo GIF is recorded
 the same way (`scripts/record-demo.py`), and the browser demo lives in
 `docs/index.html`.
+
+## FAQ
+
+**Can I get the iPhone Dynamic Island on Android?**
+Yes — that's the Android app in this repo: a floating island pill that hugs
+the punch-hole camera, shows your music with animated EQ bars and synced
+lyrics, mirrors notifications, and expands into a media card. It works on
+any Android 8+ phone; no root, no launcher change. Grab the APK from
+[Releases](https://github.com/MarcoZorn/lost-island/releases).
+
+**Is there a Dynamic Island for Linux?**
+That's the flagship here: a native GTK4 + layer-shell island for KDE
+Plasma, Hyprland, Sway and any wlr compositor — Apple-style pill morphs,
+MPRIS media controls, volume OSD, notification peeks, all measured at
+~0.2 % idle CPU. Arch, Debian/Ubuntu and Fedora packages are in
+[Releases](https://github.com/MarcoZorn/lost-island/releases).
+
+**Does it work on Windows 11 or macOS?**
+Yes — native companions (WPF on Windows, AppKit on macOS) with the same
+look: clock pill, now-playing with album art, media controls. Both are
+prebuilt on every release.
+
+**How is this different from the notch / punch hole "island" apps?**
+Lost Island is one open-source project with the same design language on
+every platform, it's fully native (no Electron, no web views), and the
+Linux version is event-driven end to end — the island costs nothing while
+it sits idle.
 
 ## License
 

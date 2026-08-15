@@ -25,6 +25,10 @@
             android:name=".SettingsActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".AllowedAppsActivity"
+            android:exported="false" />
+
         <service
             android:name=".IslandService"
             android:exported="false"

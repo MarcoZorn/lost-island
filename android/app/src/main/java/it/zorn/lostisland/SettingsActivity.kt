@@ -1,5 +1,6 @@
 package it.zorn.lostisland
 
+import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.Typeface
@@ -78,6 +79,59 @@ class SettingsActivity : AppCompatActivity() {
             if (it == 0) "never" else "$it s"
         }
 
+        // -- Camera notch ----------------------------------------------------
+        root.section("Camera notch")
+        root.add(text("Resting appearance", 13f, DIM), top = dp(12))
+        root.add(stringRadios(
+            Prefs.idleMode(prefs),
+            listOf("hidden" to "Hidden", "outline" to "Outline", "pill" to "Pill"),
+            horizontal = true,
+            key = "idle_mode"
+        ), top = dp(2))
+
+        // nudges only bite when auto-centering on the cutout, so gate them on that switch
+        val nudgeBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        nudgeBox.sliderRow("Nudge X", -40, 40, Prefs.nudgeX(prefs), "notch_nudge_x") { "$it dp" }
+        nudgeBox.sliderRow("Nudge Y", -40, 40, Prefs.nudgeY(prefs), "notch_nudge_y") { "$it dp" }
+        nudgeBox.visibility = if (Prefs.notchAutocenter(prefs)) View.VISIBLE else View.GONE
+        root.add(SwitchCompat(this).apply {
+            text = "Auto-center on the camera cutout"
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            isChecked = Prefs.notchAutocenter(prefs)
+            setOnCheckedChangeListener { _, checked ->
+                prefs.edit().putBoolean("notch_autocenter", checked).apply()
+                nudgeBox.visibility = if (checked) View.VISIBLE else View.GONE
+            }
+        }, top = dp(14))
+        root.add(nudgeBox)
+        root.sliderRow("Corner radius", 8, 40, Prefs.corner(prefs), "corner") { "$it dp" }
+        root.sliderRow("Peek duration", 1, 8, Prefs.peekSeconds(prefs), "peek_seconds") { "$it s" }
+
+        // -- Notifications ---------------------------------------------------
+        root.section("Notifications")
+        root.add(boolSwitch("Pulse the ring on a new notification", "led_pulse", true), top = dp(12))
+        root.add(boolSwitch("Battery alarm", "batt_alarm", false), top = dp(14))
+        root.sliderRow("Low-battery threshold", 5, 50, Prefs.battThreshold(prefs), "batt_threshold") { "$it%" }
+        root.add(boolSwitch("Vibrate on low battery", "batt_vibrate", true), top = dp(12))
+        root.add(text("Long-press the island", 13f, DIM), top = dp(16))
+        root.add(stringRadios(
+            Prefs.longAction(prefs),
+            listOf("expand" to "Open card", "openapp" to "Open app", "dismiss" to "Dismiss"),
+            horizontal = false,
+            key = "long_action"
+        ), top = dp(2))
+
+        // -- Allowed apps ----------------------------------------------------
+        root.section("Allowed apps")
+        root.add(text("Which apps may peek into the island. Empty = all apps allowed.", 13f, DIM), top = dp(4))
+        root.add(text("Choose apps →", 15f, Color.WHITE).apply {
+            setPadding(0, dp(10), 0, dp(10))
+            setOnClickListener {
+                startActivity(Intent(this@SettingsActivity, AllowedAppsActivity::class.java))
+            }
+        }, top = dp(6))
+
         // -- About -----------------------------------------------------------
         root.section("About")
         val version = try {
@@ -116,6 +170,29 @@ class SettingsActivity : AppCompatActivity() {
                 else -> "split"
             }
             prefs.edit().putString("content_side", value).apply()
+        }
+        return group
+    }
+
+    private fun stringRadios(
+        current: String,
+        options: List<Pair<String, String>>,
+        horizontal: Boolean,
+        key: String
+    ): RadioGroup {
+        val group = RadioGroup(this).apply {
+            if (horizontal) orientation = RadioGroup.HORIZONTAL
+        }
+        val buttons = options.map { (value, label) ->
+            val rb = radio(label)
+            group.addView(rb)
+            value to rb
+        }
+        (buttons.firstOrNull { it.first == current }?.second ?: buttons.first().second).isChecked = true
+        group.setOnCheckedChangeListener { _, checkedId ->
+            val picked = buttons.firstOrNull { it.second.id == checkedId }?.first
+                ?: return@setOnCheckedChangeListener
+            prefs.edit().putString(key, picked).apply()
         }
         return group
     }

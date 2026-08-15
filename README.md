@@ -15,6 +15,7 @@
   <img src="https://img.shields.io/badge/license-MIT-yellow.svg" alt="MIT">
   <img src="https://img.shields.io/badge/GTK-4-blue.svg" alt="GTK4">
   <img src="https://img.shields.io/badge/platforms-Linux%20%C2%B7%20Windows%20%C2%B7%20macOS%20%C2%B7%20Android-8A2BE2" alt="platforms">
+  <a href="https://github.com/MarcoZorn/lost-island/stargazers"><img src="https://img.shields.io/github/stars/MarcoZorn/lost-island?style=social" alt="GitHub stars"></a>
 </p>
 
 <p align="center">
@@ -235,6 +236,12 @@ Lost Island is one open-source project with the same design language on
 every platform, it's fully native (no Electron, no web views), and the
 Linux version is event-driven end to end — the island costs nothing while
 it sits idle.
+
+---
+
+<p align="center">
+  <b>If Lost Island lives on your screen, <a href="https://github.com/MarcoZorn/lost-island">leave it a ⭐</a> — it's how other people find it.</b>
+</p>
 
 ## License
 

@@ -1,6 +1,8 @@
 package it.zorn.lostisland
 
+import android.app.PendingIntent
 import android.content.Context
+import android.graphics.drawable.Drawable
 import android.media.session.MediaController
 import android.os.SystemClock
 
@@ -29,6 +31,36 @@ object MediaState {
         if (!playing) return basePosMs / 1000.0
         val drift = (SystemClock.elapsedRealtime() - baseTimeMs) * speed
         return (basePosMs + drift) / 1000.0
+    }
+}
+
+/**
+ * Same bridge pattern for status-bar notifications: MediaListener produces,
+ * IslandService consumes, all callbacks invoked on the main thread.
+ */
+object NotifState {
+    class Entry(
+        val key: String,
+        val icon: Drawable?,
+        val appName: String,
+        val title: String,
+        val text: String,
+        val intent: PendingIntent?,
+        val whenTs: Long
+    )
+
+    @Volatile var connected = false
+    @Volatile var entries: List<Entry> = emptyList()
+
+    /** Set by MediaListener while connected; dismisses from the status bar too. */
+    var canceler: ((String) -> Unit)? = null
+
+    /** Set by IslandService. */
+    var onChanged: (() -> Unit)? = null
+    var onPosted: ((Entry) -> Unit)? = null
+
+    fun cancel(key: String) {
+        canceler?.invoke(key)
     }
 }
 

@@ -11,8 +11,8 @@ android {
         applicationId = "it.zorn.lostisland"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "1.6.0"
+        versionCode = 5
+        versionName = "1.6.1"
     }
 
     signingConfigs {

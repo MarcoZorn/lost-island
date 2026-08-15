@@ -20,8 +20,11 @@ Feature parity with desktop v1.3 where Android allows it.
   transport controls; tap outside (or on the card's empty space) to collapse.
 - **Notifications in the island**: when a notification arrives while the pill
   is collapsed, the app's icon and the notification title peek into the pill
-  for ~2.5 s, then the previous face returns. The expanded card lists the
-  latest notifications (up to 6): tap a row to open it, tap ✕ to dismiss it.
+  for a configurable spell (1–8 s, default 3), then the previous face returns.
+  The expanded card lists the latest notifications (up to 6): tap a row to open
+  it, tap ✕ to dismiss it. Rows carrying a live timer (a running stopwatch or
+  count-down notification) show a ticking clock, and rows with a direct-reply
+  action grow a **Reply** field so you can answer without leaving the island.
 - Media detection via the system's media sessions — nothing is read beyond
   track metadata and playback state, and nothing leaves the device except the
   lyrics lookup (artist / title / album / duration to lrclib.net).
@@ -44,6 +47,31 @@ width and equal slot widths.
   - `split` — sensible pairs per face: title left + EQ right (auto), clock
     left + battery right (status), notification icons left + count right, …
 
+## Live in the notch
+
+The island reads the device's **display cutout** and parks itself right on the
+punch-hole, morphing out of the hole when there's something to show and melting
+back into it when idle.
+
+- **Auto-center on the camera cutout** (default on) — derives the gap and the
+  screen position straight from the detected cutout, so the pill wraps the lens
+  no matter where the manufacturer put it. With it off, the manual **camera
+  gap** / **top offset** from the layout section are used instead.
+- **Nudge X / Nudge Y** (−40…40 dp, centered at 0) — fine calibration for the
+  auto-centered position. Real cutouts and reported bounds drift a pixel or
+  two between devices; nudge until the ring sits dead-on. Shown only while
+  auto-center is on.
+- **Resting appearance** — what the collapsed island looks like when nothing is
+  happening:
+  - `hidden` — invisible; it stays alive and morphs out only on activity
+  - `outline` — a thin ring traced around the camera hole
+  - `pill` — the classic always-on pill with the tap / swipe face cycle
+- **Corner radius** (8–40 dp, default 20) — roundness of the pill; the expanded
+  card uses this plus a little more.
+- **Peek duration** (1–8 s, default 3) — how long a notification peek lingers.
+- **Ring pulse** — on a new notification the ring around the hole pulses in your
+  accent color (can be turned off).
+
 ## Notifications and the status bar
 
 Dismissing a notification from the island (the ✕ on a card row) removes it
@@ -58,6 +86,16 @@ notifications (already shown as the music face) are ignored. If notification
 access is off, the notifs face falls back to the clock and the card section
 is hidden.
 
+**Allowed apps** — by default every app may peek. Open *Allowed apps* in
+settings and flip on specific apps to restrict peeks/notifs to just those;
+turn them all back off and the island listens to everything again. The list
+is drawn from installed launchable apps, sorted by name.
+
+**Battery alarm** — independent of app notifications, the island can peek a
+low-battery warning (with an optional vibration) when the charge drops through
+a threshold you pick, plus a quiet "Charging" / "Fully charged" peek when the
+cable state changes.
+
 ## Settings
 
 All settings apply live (gear on the card, or from the onboarding screen):
@@ -69,6 +107,12 @@ All settings apply live (gear on the card, or from the onboarding screen):
 - **Behavior** — what a tap does (cycle faces / open the card), haptic tick
   on face change, auto-collapse for the card (0 = never, up to 15 s; any
   touch on the card resets the timer)
+- **Camera notch** — resting appearance (hidden / outline / pill), auto-center
+  on the cutout with X / Y nudge calibration, corner radius, peek duration
+- **Notifications** — ring pulse on/off, battery alarm with low-battery
+  threshold and vibrate toggle, and what a long-press does (open card / open
+  app / dismiss)
+- **Allowed apps** — the per-app peek allowlist (empty = all apps)
 - **About** — version and project link
 
 ## Permissions

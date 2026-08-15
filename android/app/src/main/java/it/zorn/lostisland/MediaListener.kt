@@ -1,6 +1,8 @@
 package it.zorn.lostisland
 
 import android.app.Notification
+import android.app.PendingIntent
+import android.app.RemoteInput
 import android.content.ComponentName
 import android.media.MediaMetadata
 import android.media.session.MediaController
@@ -91,6 +93,9 @@ class MediaListener : NotificationListenerService() {
         // media notifications already surface through the session path
         if (n.extras.containsKey(Notification.EXTRA_MEDIA_SESSION)) return false
         if ((n.extras.getString("android.template") ?: "").contains("MediaStyle")) return false
+        // per-app allowlist; empty = all apps
+        val allow = Prefs.notifApps(Prefs.get(this))
+        if (allow.isNotEmpty() && sbn.packageName !in allow) return false
         return true
     }
 
@@ -112,6 +117,16 @@ class MediaListener : NotificationListenerService() {
         } catch (_: Exception) {
             sbn.packageName
         }
+        // first action carrying a RemoteInput = inline reply target
+        var replyIntent: PendingIntent? = null
+        var replyInputs: Array<RemoteInput>? = null
+        n.actions?.forEach { a ->
+            val ris = a.remoteInputs
+            if (replyIntent == null && ris != null && ris.any { it.resultKey != null }) {
+                replyIntent = a.actionIntent
+                replyInputs = ris
+            }
+        }
         return NotifState.Entry(
             key = sbn.key,
             icon = icon,
@@ -119,7 +134,11 @@ class MediaListener : NotificationListenerService() {
             title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: appName,
             text = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: "",
             intent = n.contentIntent,
-            whenTs = if (n.`when` > 0) n.`when` else sbn.postTime
+            whenTs = if (n.`when` > 0) n.`when` else sbn.postTime,
+            showChrono = n.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false),
+            chronoCountDown = n.extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false),
+            replyIntent = replyIntent,
+            replyInputs = replyInputs
         )
     }
 
@@ -160,6 +179,9 @@ class MediaListener : NotificationListenerService() {
         MediaState.artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)
         MediaState.album = metadata?.getString(MediaMetadata.METADATA_KEY_ALBUM)
         MediaState.durationMs = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+        MediaState.art = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+            ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
         MediaState.playing = state?.state == PlaybackState.STATE_PLAYING
         MediaState.basePosMs = state?.position ?: 0L
         MediaState.baseTimeMs = state?.lastPositionUpdateTime?.takeIf { it > 0 }

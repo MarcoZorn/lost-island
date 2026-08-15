@@ -1,7 +1,9 @@
 package it.zorn.lostisland
 
 import android.app.PendingIntent
+import android.app.RemoteInput
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.media.session.MediaController
 import android.os.SystemClock
@@ -18,6 +20,7 @@ object MediaState {
     @Volatile var album: String? = null
     @Volatile var durationMs: Long = 0
     @Volatile var playing: Boolean = false
+    @Volatile var art: Bitmap? = null
 
     // last reported position, extrapolated locally while playing
     @Volatile var basePosMs: Long = 0
@@ -46,7 +49,11 @@ object NotifState {
         val title: String,
         val text: String,
         val intent: PendingIntent?,
-        val whenTs: Long
+        val whenTs: Long,
+        val showChrono: Boolean = false,
+        val chronoCountDown: Boolean = false,
+        val replyIntent: PendingIntent? = null,
+        val replyInputs: Array<RemoteInput>? = null
     )
 
     @Volatile var connected = false

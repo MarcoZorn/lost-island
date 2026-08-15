@@ -14,6 +14,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
@@ -27,6 +28,7 @@ import android.provider.Settings
 import android.text.TextUtils
 import android.view.GestureDetector
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -35,7 +37,9 @@ import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextClock
 import android.widget.TextView
 import kotlin.math.abs
@@ -49,6 +53,11 @@ class IslandService : Service() {
     private lateinit var pill: LinearLayout
     private lateinit var card: LinearLayout
 
+    // pill: leftSlot | spacer (camera gap) | rightSlot; capsule bg spans all three
+    private lateinit var leftSlot: LinearLayout
+    private lateinit var rightSlot: LinearLayout
+    private lateinit var spacer: View
+
     // pill faces
     private lateinit var clock: TextClock
     private lateinit var titleText: TextView
@@ -56,12 +65,20 @@ class IslandService : Service() {
     private lateinit var batteryText: TextView
     private lateinit var eq: EqBars
     private lateinit var dot: View
+    private lateinit var notifIcons: LinearLayout
+    private lateinit var notifCount: TextView
+    private lateinit var peekIcon: ImageView
+    private lateinit var peekText: TextView
 
     // card
     private lateinit var cardTitle: TextView
     private lateinit var cardArtist: TextView
     private lateinit var cardBattery: TextView
+    private lateinit var cardClock: TextClock
+    private lateinit var progress: ProgressBar
     private lateinit var playPause: ImageButton
+    private lateinit var notifHeader: TextView
+    private lateinit var notifRows: LinearLayout
 
     private lateinit var pillBg: GradientDrawable
     private lateinit var cardBg: GradientDrawable
@@ -72,6 +89,7 @@ class IslandService : Service() {
     private var animator: ValueAnimator? = null
     private var batteryReceiver: BroadcastReceiver? = null
     private var lyricTicking = false
+    private var peekEntry: NotifState.Entry? = null
 
     private val lyricTick = object : Runnable {
         override fun run() {
@@ -79,6 +97,21 @@ class IslandService : Service() {
             main.postDelayed(this, 1000)
         }
     }
+
+    private val cardTick = object : Runnable {
+        override fun run() {
+            if (!expanded) return
+            updateProgress()
+            main.postDelayed(this, 1000)
+        }
+    }
+
+    private val peekEnd = Runnable {
+        peekEntry = null
+        if (!expanded) render()
+    }
+
+    private val autoCollapseRun = Runnable { if (expanded) collapse() }
 
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
         face = Prefs.face(prefs)
@@ -122,6 +155,8 @@ class IslandService : Service() {
         applyPrefs()
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
         MediaState.onChanged = ::updateUi
+        NotifState.onChanged = ::onNotifsChanged
+        NotifState.onPosted = ::onNotifPosted
         updateUi()
     }
 
@@ -131,8 +166,10 @@ class IslandService : Service() {
 
     override fun onDestroy() {
         MediaState.onChanged = null
+        NotifState.onChanged = null
+        NotifState.onPosted = null
         animator?.cancel()
-        main.removeCallbacks(lyricTick)
+        main.removeCallbacksAndMessages(null)
         batteryReceiver?.let { unregisterReceiver(it) }
         batteryReceiver = null
         if (::prefs.isInitialized) prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
@@ -168,38 +205,56 @@ class IslandService : Service() {
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
             textSize = 14f
+            isSingleLine = true
         }
-        titleText = pillLabel(maxWidthDp = 220)
-        lyricText = pillLabel(maxWidthDp = 240)
+        titleText = pillLabel()
+        lyricText = pillLabel()
+        peekText = pillLabel()
         batteryText = TextView(this).apply {
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
             textSize = 13f
-            visibility = View.GONE
+            isSingleLine = true
         }
-        eq = EqBars(this).apply { visibility = View.GONE }
+        eq = EqBars(this)
         dot = View(this).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(ACCENT)
+                setColor(Prefs.accent(prefs))
             }
-            visibility = View.GONE
         }
+        peekIcon = ImageView(this)
+        notifIcons = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE
+            dividerDrawable = GradientDrawable().apply { setSize(dp(4), 0) }
+        }
+        notifCount = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            textSize = 12f
+            isSingleLine = true
+        }
+
+        fun slot() = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE
+            dividerDrawable = GradientDrawable().apply { setSize(dp(8), 0) }
+        }
+        leftSlot = slot()
+        rightSlot = slot()
+        spacer = View(this)
         pillBg = islandBackground(dp(20).toFloat())
         pill = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(8))
+            setPadding(0, dp(8), 0, dp(8))
             background = pillBg
-            // 8dp between whichever children a face leaves visible
-            showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE
-            dividerDrawable = GradientDrawable().apply { setSize(dp(8), 0) }
-            addView(titleText)
-            addView(eq)
-            addView(lyricText)
-            addView(dot, LinearLayout.LayoutParams(dp(6), dp(6)))
-            addView(clock)
-            addView(batteryText)
+            addView(leftSlot, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
+            addView(spacer, LinearLayout.LayoutParams(0, 1))
+            addView(rightSlot, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
         }
         val gestures = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent) = true
@@ -224,6 +279,10 @@ class IslandService : Service() {
             letterSpacing = 0.12f
             setTextColor(0x66FFFFFF)
         }
+        cardClock = TextClock(this).apply {
+            textSize = 11f
+            setTextColor(0x66FFFFFF)
+        }
         cardBattery = TextView(this).apply {
             textSize = 11f
             setTextColor(0x66FFFFFF)
@@ -245,6 +304,9 @@ class IslandService : Service() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(header, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
+            addView(cardClock, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                rightMargin = dp(8)
+            })
             addView(cardBattery)
             addView(gear)
         }
@@ -260,6 +322,9 @@ class IslandService : Service() {
             textSize = 14f
             isSingleLine = true
             ellipsize = TextUtils.TruncateAt.END
+        }
+        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            visibility = View.GONE
         }
         playPause = mediaButton(android.R.drawable.ic_media_play) {
             MediaState.controller?.transportControls?.let {
@@ -277,8 +342,24 @@ class IslandService : Service() {
                 MediaState.controller?.transportControls?.skipToNext()
             })
         }
+        notifHeader = TextView(this).apply {
+            text = "NOTIFICATIONS"
+            textSize = 11f
+            letterSpacing = 0.12f
+            setTextColor(0x66FFFFFF)
+            visibility = View.GONE
+        }
+        notifRows = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+        }
         cardBg = islandBackground(dp(34).toFloat())
-        card = LinearLayout(this).apply {
+        card = object : LinearLayout(this) {
+            override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
+                pokeAutoCollapse()
+                return super.onInterceptTouchEvent(ev)
+            }
+        }.apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(14), dp(20), dp(10))
             background = cardBg
@@ -288,9 +369,16 @@ class IslandService : Service() {
             })
             addView(cardTitle)
             addView(cardArtist)
+            addView(progress, LinearLayout.LayoutParams(MATCH_PARENT, dp(4)).apply {
+                topMargin = dp(10)
+            })
             addView(controls, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
                 topMargin = dp(8)
             })
+            addView(notifHeader, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                topMargin = dp(10)
+            })
+            addView(notifRows, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
             setOnClickListener { collapse() }
         }
 
@@ -304,13 +392,11 @@ class IslandService : Service() {
         }
     }
 
-    private fun pillLabel(maxWidthDp: Int) = TextView(this).apply {
+    private fun pillLabel() = TextView(this).apply {
         setTextColor(Color.WHITE)
         textSize = 13f
         isSingleLine = true
         ellipsize = TextUtils.TruncateAt.END
-        maxWidth = dp(maxWidthDp)
-        visibility = View.GONE
     }
 
     private fun islandBackground(radius: Float) = GradientDrawable().apply {
@@ -333,13 +419,67 @@ class IslandService : Service() {
         val alpha = Prefs.opacity(prefs) * 255 / 100
         pillBg.setColor((alpha shl 24) or 0x0C0C0E)
         cardBg.setColor((alpha shl 24) or 0x0C0C0E)
+        val accent = Prefs.accent(prefs)
+        (dot.background as GradientDrawable).setColor(accent)
+        progress.progressTintList = ColorStateList.valueOf(accent)
+        val fmt = if (Prefs.clock24(prefs)) "HH:mm" else "h:mm"
+        clock.format12Hour = fmt
+        clock.format24Hour = fmt
+        cardClock.format12Hour = fmt
+        cardClock.format24Hour = fmt
+        applyLayout()
         params.y = dp(Prefs.topOffset(prefs))
         if (root.isAttachedToWindow) wm.updateViewLayout(root, params)
+        pokeAutoCollapse()
+    }
+
+    /** Slot geometry: fixed pill width with a screen-centered camera gap, or legacy wrap. */
+    private fun applyLayout() {
+        val gap = Prefs.cameraGap(prefs)
+        val gapped = gap > 0
+        val pillW = dp(Prefs.pillWidth(prefs))
+        val slotW = if (gapped) (pillW - dp(gap)) / 2 else WRAP_CONTENT
+
+        val plp = pill.layoutParams
+        if (plp != null) {
+            plp.width = if (gapped) pillW else WRAP_CONTENT
+            pill.layoutParams = plp
+        }
+        (leftSlot.layoutParams as LinearLayout.LayoutParams).let {
+            it.width = slotW
+            leftSlot.layoutParams = it
+        }
+        (rightSlot.layoutParams as LinearLayout.LayoutParams).let {
+            it.width = if (gapped) slotW else 0
+            rightSlot.layoutParams = it
+        }
+        (spacer.layoutParams as LinearLayout.LayoutParams).let {
+            it.width = if (gapped) dp(gap) else 0
+            spacer.layoutParams = it
+        }
+        rightSlot.visibility = if (gapped) View.VISIBLE else View.GONE
+        spacer.visibility = rightSlot.visibility
+        leftSlot.gravity =
+            if (gapped) Gravity.END or Gravity.CENTER_VERTICAL else Gravity.CENTER
+        if (gapped) {
+            leftSlot.setPadding(dp(12), 0, dp(6), 0)
+            rightSlot.setPadding(dp(6), 0, dp(12), 0)
+        } else {
+            leftSlot.setPadding(dp(16), 0, dp(16), 0)
+        }
+        // content must never cross the gap: ellipsize everything to its slot
+        val maxW = if (gapped) (slotW - dp(18)).coerceAtLeast(dp(20)) else dp(240)
+        for (t in listOf(titleText, lyricText, peekText, clock, batteryText, notifCount)) {
+            t.maxWidth = maxW
+        }
     }
 
     // -- faces ---------------------------------------------------------------
 
     private fun cycle(step: Int) {
+        peekEntry = null
+        main.removeCallbacks(peekEnd)
+        if (Prefs.haptic(prefs)) pill.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         val faces = Prefs.enabledFaces(prefs)
         val i = faces.indexOf(face).coerceAtLeast(0)
         face = faces[(i + step + faces.size) % faces.size]
@@ -353,41 +493,77 @@ class IslandService : Service() {
             face = faces[0]
             prefs.edit().putString("face", face).apply()
         }
-        for (v in listOf(titleText, eq, lyricText, dot, clock, batteryText)) {
-            v.visibility = View.GONE
+        leftSlot.removeAllViews()
+        rightSlot.removeAllViews()
+        val side = Prefs.contentSide(prefs)
+        val gapped = Prefs.cameraGap(prefs) > 0
+
+        fun add(v: View, splitRight: Boolean, lp: LinearLayout.LayoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT)) {
+            val slot = when {
+                !gapped -> leftSlot
+                side == "left" -> leftSlot
+                side == "right" -> rightSlot
+                splitRight -> rightSlot
+                else -> leftSlot
+            }
+            slot.addView(v, lp)
         }
+
         val hasMedia = MediaState.title != null
+        val peek = peekEntry
+        val notifsShown = NotifState.connected && NotifState.entries.isNotEmpty()
         when {
+            peek != null && !expanded -> {
+                peekIcon.setImageDrawable(peek.icon)
+                peekText.text = peek.title
+                add(peekIcon, false, LinearLayout.LayoutParams(dp(16), dp(16)))
+                add(peekText, true)
+            }
             face == "auto" && hasMedia -> {
                 titleText.text = MediaState.title
-                titleText.visibility = View.VISIBLE
-                eq.visibility = View.VISIBLE
+                add(titleText, false)
+                add(eq, true)
             }
             face == "status" -> {
-                clock.visibility = View.VISIBLE
-                batteryText.visibility = View.VISIBLE
+                add(clock, false)
+                add(batteryText, true)
             }
             face == "title" && hasMedia -> {
                 titleText.text = MediaState.title
-                titleText.visibility = View.VISIBLE
+                add(titleText, false)
             }
             face == "lyrics" && hasMedia -> {
-                lyricText.visibility = View.VISIBLE
+                add(lyricText, false)
                 refreshLyric()
                 Lyrics.request(
                     MediaState.artist ?: "", MediaState.title ?: "",
                     MediaState.album ?: "", MediaState.durationMs / 1000
                 ) { if (face == "lyrics") refreshLyric() }
             }
-            face == "clock" -> clock.visibility = View.VISIBLE
-            face == "battery" -> batteryText.visibility = View.VISIBLE
+            face == "clock" -> add(clock, false)
+            face == "battery" -> add(batteryText, true)
+            face == "notifs" && notifsShown -> {
+                notifIcons.removeAllViews()
+                for (e in NotifState.entries.take(4)) {
+                    notifIcons.addView(
+                        ImageView(this).apply { setImageDrawable(e.icon) },
+                        LinearLayout.LayoutParams(dp(16), dp(16))
+                    )
+                }
+                add(notifIcons, false)
+                val extra = NotifState.entries.size - 4
+                if (extra > 0) {
+                    notifCount.text = "+$extra"
+                    add(notifCount, true)
+                }
+            }
             else -> {
-                // media face with nothing playing: fall back to the idle clock
-                dot.visibility = View.VISIBLE
-                clock.visibility = View.VISIBLE
+                // nothing to show for this face: idle dot + clock
+                add(dot, false, LinearLayout.LayoutParams(dp(6), dp(6)))
+                add(clock, false)
             }
         }
-        eq.setPlaying(MediaState.playing && eq.visibility == View.VISIBLE)
+        eq.setPlaying(MediaState.playing && eq.parent != null)
         syncBattery()
         syncLyricTick()
     }
@@ -399,7 +575,95 @@ class IslandService : Service() {
             if (MediaState.playing) android.R.drawable.ic_media_pause
             else android.R.drawable.ic_media_play
         )
+        updateProgress()
         render()
+    }
+
+    private fun updateProgress() {
+        val dur = MediaState.durationMs
+        if (MediaState.title != null && dur > 0) {
+            progress.visibility = View.VISIBLE
+            progress.max = (dur / 1000).toInt().coerceAtLeast(1)
+            progress.progress = MediaState.positionSec().toInt().coerceIn(0, progress.max)
+        } else {
+            progress.visibility = View.GONE
+        }
+    }
+
+    // -- notifications -------------------------------------------------------
+
+    private fun onNotifsChanged() {
+        rebuildNotifRows()
+        if (!expanded) render()
+    }
+
+    private fun onNotifPosted(entry: NotifState.Entry) {
+        if (expanded) return
+        peekEntry = entry
+        main.removeCallbacks(peekEnd)
+        main.postDelayed(peekEnd, 2500)
+        render()
+    }
+
+    private fun rebuildNotifRows() {
+        notifRows.removeAllViews()
+        val entries = if (NotifState.connected) NotifState.entries else emptyList()
+        val vis = if (entries.isEmpty()) View.GONE else View.VISIBLE
+        notifHeader.visibility = vis
+        notifRows.visibility = vis
+        for (e in entries.take(6)) {
+            notifRows.addView(notifRow(e), LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        }
+    }
+
+    private fun notifRow(e: NotifState.Entry): View {
+        val title = TextView(this).apply {
+            text = e.title
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            textSize = 13f
+            isSingleLine = true
+            ellipsize = TextUtils.TruncateAt.END
+        }
+        val body = TextView(this).apply {
+            text = e.text
+            setTextColor(0xA6FFFFFF.toInt())
+            textSize = 11f
+            isSingleLine = true
+            ellipsize = TextUtils.TruncateAt.END
+        }
+        val texts = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(title)
+            if (e.text.isNotEmpty()) addView(body)
+        }
+        val close = TextView(this).apply {
+            text = "✕"
+            textSize = 13f
+            setTextColor(0x66FFFFFF)
+            setPadding(dp(10), dp(4), dp(2), dp(4))
+            setOnClickListener { NotifState.cancel(e.key) }
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(6), 0, dp(6))
+            addView(
+                ImageView(this@IslandService).apply { setImageDrawable(e.icon) },
+                LinearLayout.LayoutParams(dp(20), dp(20))
+            )
+            addView(texts, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply {
+                leftMargin = dp(10)
+            })
+            addView(close)
+            setOnClickListener {
+                try {
+                    e.intent?.send()
+                } catch (_: Exception) {
+                }
+                collapse()
+            }
+        }
     }
 
     // -- lyrics --------------------------------------------------------------
@@ -452,19 +716,32 @@ class IslandService : Service() {
             status == BatteryManager.BATTERY_STATUS_FULL
         val label = "$pct%"
         batteryText.text = label
-        batteryText.setTextColor(if (charging) ACCENT else Color.WHITE)
+        batteryText.setTextColor(if (charging) Prefs.accent(prefs) else Color.WHITE)
         cardBattery.text = label
     }
 
     // -- expand / collapse ---------------------------------------------------
 
+    private fun pokeAutoCollapse() {
+        main.removeCallbacks(autoCollapseRun)
+        val s = Prefs.autoCollapse(prefs)
+        if (expanded && s > 0) main.postDelayed(autoCollapseRun, s * 1000L)
+    }
+
     private fun expand() {
         if (expanded) return
         expanded = true
+        peekEntry = null
+        main.removeCallbacks(peekEnd)
+        rebuildNotifRows()
+        updateProgress()
         pill.visibility = View.GONE
         card.visibility = View.VISIBLE
         syncBattery()
         syncLyricTick()
+        pokeAutoCollapse()
+        main.removeCallbacks(cardTick)
+        main.postDelayed(cardTick, 1000)
         val width = dp(360)
         card.measure(
             View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
@@ -475,14 +752,17 @@ class IslandService : Service() {
 
     private fun collapse() {
         expanded = false
+        main.removeCallbacks(autoCollapseRun)
+        main.removeCallbacks(cardTick)
         card.visibility = View.GONE
         pill.visibility = View.VISIBLE
         syncBattery()
         syncLyricTick()
-        pill.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
+        val gapped = Prefs.cameraGap(prefs) > 0
+        val wSpec =
+            if (gapped) View.MeasureSpec.makeMeasureSpec(dp(Prefs.pillWidth(prefs)), View.MeasureSpec.EXACTLY)
+            else View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        pill.measure(wSpec, View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
         morph(pill.measuredWidth, pill.measuredHeight)
     }
 
@@ -513,6 +793,5 @@ class IslandService : Service() {
 
     private companion object {
         const val CHANNEL = "island"
-        val ACCENT = 0xFFFF9F0A.toInt()
     }
 }

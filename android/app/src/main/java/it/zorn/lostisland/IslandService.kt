@@ -34,6 +34,8 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.provider.Settings
 import android.text.TextUtils
+import android.hardware.display.DisplayManager
+import android.view.Display
 import android.view.DisplayCutout
 import android.view.GestureDetector
 import android.view.Gravity
@@ -467,13 +469,30 @@ class IslandService : Service() {
     // -- cutout detection ----------------------------------------------------
 
     private fun readInsets(insets: WindowInsets?) {
-        notch = insets?.displayCutout?.let { pickTopRect(it) }
+        // Read the cutout from the *display*, not the overlay's own window insets:
+        // window insets are reported relative to the overlay, so moving the
+        // overlay to centre on the notch shifts the reported cutout and the two
+        // chase each other forever. The display cutout is fixed in screen space.
+        val cutout = stableCutout() ?: insets?.displayCutout
+        val newNotch = cutout?.let { pickTopRect(it) }
             ?.takeIf { it.width() > 0 && it.height() > 0 }
+        if (newNotch == notch) return   // nothing changed; don't re-lay-out (kills the feedback loop)
+        notch = newNotch
         if (state == St.EXPANDED) {
             applyLayout()
             pushLayout()
         } else {
             sync()
+        }
+    }
+
+    private fun stableCutout(): DisplayCutout? {
+        if (Build.VERSION.SDK_INT < 29) return null
+        return try {
+            getSystemService(DisplayManager::class.java)
+                ?.getDisplay(Display.DEFAULT_DISPLAY)?.cutout
+        } catch (_: Exception) {
+            null
         }
     }
 

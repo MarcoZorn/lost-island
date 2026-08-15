@@ -1,6 +1,6 @@
 # Maintainer: Marco Zorn <m@zorn.it>
 pkgname=lost-island
-pkgver=1.4.0
+pkgver=1.5.0
 pkgrel=1
 pkgdesc="A Dynamic Island for your Linux desktop — fluid, native, light on your battery"
 arch=('any')

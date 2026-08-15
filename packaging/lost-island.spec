@@ -1,5 +1,5 @@
 Name:           lost-island
-Version:        1.4.0
+Version:        1.5.0
 Release:        1%{?dist}
 Summary:        A Dynamic Island for your Linux desktop
 License:        MIT
@@ -39,6 +39,9 @@ install -Dm644 data/lost-island.service %{buildroot}/usr/lib/systemd/user/lost-i
 %license LICENSE
 
 %changelog
+* Fri Aug 15 2026 Marco Zorn <m@zorn.it> - 1.5.0-1
+- Android: camera-safe pill slots, notification mirroring, full settings, accents
+
 * Thu Aug 14 2026 Marco Zorn <m@zorn.it> - 1.4.0-1
 - Android overhaul: cutout overlap, signed apk, faces, lyrics, settings, icon
 
